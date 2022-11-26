@@ -1,14 +1,32 @@
 package io.github.shaksternano.pinbot;
 
 import io.github.shaksternano.pinbot.command.Command;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class CommandClient {
 
     public static final Map<String, Command> COMMANDS = new HashMap<>();
+
+    public static void handleCommand(SlashCommandInteractionEvent event) {
+        String commandName = event.getName();
+        if (event.getSubcommandName() != null) {
+            commandName += " " + event.getSubcommandName();
+        }
+        Command command = COMMANDS.get(commandName);
+        if (command != null) {
+            String response;
+            try {
+                response = command.execute(event);
+            } catch (Throwable t) {
+                response = "An error occurred while executing the command.";
+                Main.getLogger().error("An error occurred while executing the command " + command, t);
+            }
+            event.reply(response).queue();
+        }
+    }
 
     public static void addCommands(Command command, Command... commands) {
         addCommand(command);
@@ -22,9 +40,5 @@ public class CommandClient {
                 command.getGroup().orElse("") + " " + command.getName(),
                 command
         );
-    }
-
-    public static Optional<Command> getCommand(String name) {
-        return Optional.ofNullable(COMMANDS.get(name));
     }
 }
