@@ -3,6 +3,7 @@ package io.github.shaksternano.pinbot.command;
 import io.github.shaksternano.pinbot.PinBotSettings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -26,7 +27,7 @@ public class PinChannelCommand extends PinSubCommand {
         OptionMapping mapping = getRequiredOption(event, CHANNEL_OPTION);
         Channel sendPinFrom = event.getChannel();
         Channel sendPinTo = mapping.getAsChannel();
-        if (sendPinTo.getType().isMessage()) {
+        if (sendPinTo.getType().equals(ChannelType.TEXT)) {
             PinBotSettings.setPinChannel(sendPinFrom.getIdLong(), sendPinTo.getIdLong(), guild.getIdLong());
             return "Pins from " + sendPinFrom.getAsMention() + " will now be sent to " + sendPinTo.getAsMention() + ".";
         } else {
