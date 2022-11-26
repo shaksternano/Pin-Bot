@@ -11,6 +11,7 @@ repositories {
 
 dependencies {
     implementation("net.dv8tion:JDA:${project.property("jda_version")}")
+    implementation("club.minnced:discord-webhooks:${project.property("discord_webhooks_version")}")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:${project.property("apache_log4j_2_version")}")
     implementation("com.lmax:disruptor:${project.property("lmax_disruptor_version")}")
     implementation("org.mapdb:mapdb:${project.property("mabdb_version")}")

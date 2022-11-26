@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Pin Bot");
+    private static JDA jda;
 
     public static void main(String[] args) {
         System.setProperty("log4j2.contextSelector", "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector");
@@ -26,7 +27,7 @@ public class Main {
             LOGGER.error("No Discord bot token provided. Please provide a token via the program argument or environment variable \"DISCORD_BOT_TOKEN\".");
             return;
         }
-        JDA jda = JDABuilder.createDefault(token.orElseThrow())
+        jda = JDABuilder.createDefault(token.orElseThrow())
                 .enableIntents(GatewayIntent.MESSAGE_CONTENT)
                 .addEventListeners(PinBotEventListener.getInstance())
                 .build();
@@ -82,5 +83,9 @@ public class Main {
 
     public static Logger getLogger() {
         return LOGGER;
+    }
+
+    public static JDA getJDA() {
+        return jda;
     }
 }

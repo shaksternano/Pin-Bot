@@ -20,6 +20,11 @@ public class PinBotSettings {
             .valueSerializer(Serializer.LONG)
             .createOrOpen();
 
+    private static final Map<Long, Long> webhooks = db.hashMap("webhooks")
+            .keySerializer(Serializer.LONG)
+            .valueSerializer(Serializer.LONG)
+            .createOrOpen();
+
     private static final Map<Long, Long> serverPinChannels = db.hashMap("serverPinChannels")
             .keySerializer(Serializer.LONG)
             .valueSerializer(Serializer.LONG)
@@ -45,6 +50,15 @@ public class PinBotSettings {
     public static void setPinChannel(long sendPinFromChannelId, long sendPinToChannelId, long serverId) {
         pinChannels.put(sendPinFromChannelId, sendPinToChannelId);
         serverPinChannels.put(sendPinFromChannelId, serverId);
+        db.commit();
+    }
+
+    public static Optional<Long> getWebhook(long channelId) {
+        return Optional.ofNullable(webhooks.get(channelId));
+    }
+
+    public static void setWebhook(long channelId, long webhookId) {
+        webhooks.put(channelId, webhookId);
         db.commit();
     }
 
