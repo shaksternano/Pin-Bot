@@ -20,12 +20,12 @@ public class PinBotEventListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        PinnedMessageForwarder.deleteSystemPinMessage(event);
+        PinnedMessageForwarder.tryDeleteSystemPinMessage(event);
     }
 
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
-        PinnedMessageForwarder.forwardPinnedMessage(event);
+        PinnedMessageForwarder.tryTransferPinnedMessage(event);
     }
 
     public static PinBotEventListener getInstance() {
