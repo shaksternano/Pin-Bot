@@ -74,7 +74,7 @@ public class CommandClient {
         }
     }
 
-    public static void addCommands(Command command, Command... commands) {
+    private static void addCommands(Command command, Command... commands) {
         addCommand(command);
         for (Command c : commands) {
             addCommand(c);
