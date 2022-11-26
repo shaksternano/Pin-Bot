@@ -26,7 +26,7 @@ public class PinnedMessageForwarder {
         }
     }
 
-    public static void tryTransferPinnedMessage(MessageUpdateEvent event) {
+    public static void tryForwardPinnedMessage(MessageUpdateEvent event) {
         Message message = event.getMessage();
         if (message.isPinned()) {
             Channel channel = event.getChannel();
@@ -35,7 +35,7 @@ public class PinnedMessageForwarder {
                     .ifPresentOrElse(textChannel -> textChannel.retrieveWebhooks()
                                     .submit()
                                     .thenCompose(webhooks -> getOrCreateWebhook(webhooks, textChannel))
-                                    .thenCompose(webhook -> transferPinnedMessage(message, webhook))
+                                    .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
                                     .handle((unused, throwable) -> handleError(unused, throwable, textChannel)),
                             () -> event.getChannel().sendMessage("No pin channel set!").queue()
                     );
@@ -90,7 +90,7 @@ public class PinnedMessageForwarder {
         });
     }
 
-    private static CompletableFuture<ReadonlyMessage> transferPinnedMessage(Message message, Webhook webhook) {
+    private static CompletableFuture<ReadonlyMessage> forwardPinnedMessage(Message message, Webhook webhook) {
         String webhookToken = webhook.getToken();
         if (webhookToken == null) {
             throw new IllegalStateException("The webhook token is null.");

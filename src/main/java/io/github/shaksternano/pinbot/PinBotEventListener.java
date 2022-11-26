@@ -25,7 +25,7 @@ public class PinBotEventListener extends ListenerAdapter {
 
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
-        PinnedMessageForwarder.tryTransferPinnedMessage(event);
+        PinnedMessageForwarder.tryForwardPinnedMessage(event);
     }
 
     public static PinBotEventListener getInstance() {
