@@ -26,8 +26,12 @@ public class PinChannelCommand extends PinSubCommand {
         OptionMapping mapping = getRequiredOption(event, CHANNEL_OPTION);
         Channel sendPinFrom = event.getChannel();
         Channel sendPinTo = mapping.getAsChannel();
-        PinBotSettings.setPinChannel(sendPinFrom.getIdLong(), sendPinTo.getIdLong(), guild.getIdLong());
-        return "Pins from " + sendPinFrom.getAsMention() + " will now be sent to " + sendPinTo.getAsMention() + ".";
+        if (sendPinTo.getType().isMessage()) {
+            PinBotSettings.setPinChannel(sendPinFrom.getIdLong(), sendPinTo.getIdLong(), guild.getIdLong());
+            return "Pins from " + sendPinFrom.getAsMention() + " will now be sent to " + sendPinTo.getAsMention() + ".";
+        } else {
+            return sendPinTo.getAsMention() + " is not a text channel.";
+        }
     }
 
     @Override
