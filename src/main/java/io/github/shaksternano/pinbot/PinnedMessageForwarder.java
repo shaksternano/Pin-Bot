@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class PinnedMessageForwarder {
@@ -35,8 +34,7 @@ public class PinnedMessageForwarder {
                     .map(channelId -> event.getGuild().getChannelById(TextChannel.class, channelId))
                     .ifPresentOrElse(textChannel -> textChannel.retrieveWebhooks()
                                     .submit()
-                                    .thenApply(PinnedMessageForwarder::getOwnWebhook)
-                                    .thenCompose(webhookOptional -> getOrCreateWebhook(webhookOptional.orElse(null), textChannel))
+                                    .thenCompose(webhooks -> getOrCreateWebhook(webhooks, textChannel))
                                     .thenCompose(webhook -> transferPinnedMessage(message, webhook))
                                     .handle((unused, throwable) -> handleError(unused, throwable, textChannel)),
                             () -> event.getChannel().sendMessage("No pin channel set!").queue()
@@ -44,10 +42,12 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static Optional<Webhook> getOwnWebhook(Collection<Webhook> webhooks) {
+    private static CompletableFuture<Webhook> getOrCreateWebhook(Collection<Webhook> webhooks, TextChannel channel) {
         return webhooks.stream()
                 .filter(PinnedMessageForwarder::isOwnWebhook)
-                .findAny();
+                .findAny()
+                .map(CompletableFuture::completedFuture)
+                .orElseGet(() -> createWebhook(channel));
     }
 
     private static boolean isOwnWebhook(Webhook webhook) {
@@ -56,12 +56,18 @@ public class PinnedMessageForwarder {
                 .orElse(false);
     }
 
-    private static CompletableFuture<Webhook> getOrCreateWebhook(@Nullable Webhook webhook, TextChannel textChannel) {
-        if (webhook == null) {
-            return retrieveSelfIcon().thenCompose(icon -> createWebhook(textChannel, icon));
-        } else {
-            return CompletableFuture.completedFuture(webhook);
-        }
+    private static CompletableFuture<Webhook> createWebhook(TextChannel channel) {
+        return retrieveSelfIcon().thenCompose(icon -> createWebhook(channel, icon));
+    }
+
+    private static CompletableFuture<Webhook> createWebhook(TextChannel channel, @Nullable Icon icon) {
+        return channel.createWebhook(Main.getJDA().getSelfUser().getName())
+                .setAvatar(icon)
+                .submit()
+                .thenApply(webhook -> {
+                    PinBotSettings.setWebhook(channel.getIdLong(), webhook.getIdLong());
+                    return webhook;
+                });
     }
 
     /**
@@ -82,16 +88,6 @@ public class PinnedMessageForwarder {
                 throw new UncheckedIOException(e);
             }
         });
-    }
-
-    private static CompletableFuture<Webhook> createWebhook(TextChannel channel, @Nullable Icon icon) {
-        return channel.createWebhook(Main.getJDA().getSelfUser().getName())
-                .setAvatar(icon)
-                .submit()
-                .thenApply(webhook -> {
-                    PinBotSettings.setWebhook(channel.getIdLong(), webhook.getIdLong());
-                    return webhook;
-                });
     }
 
     private static CompletableFuture<ReadonlyMessage> transferPinnedMessage(Message message, Webhook webhook) {
