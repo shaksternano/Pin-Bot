@@ -24,7 +24,7 @@ public class PinChannelListCommand extends PinSubCommand {
         Guild guild = getGuild(event);
         Map<Long, Long> serverPinChannels = PinBotSettings.getPinChannels(guild.getIdLong());
         if (serverPinChannels.isEmpty()) {
-            return "There are no pin channels currently.";
+            return "There are currently no pin channels set.";
         } else {
             return "Pin channels:\n" + serverPinChannels
                     .entrySet()
