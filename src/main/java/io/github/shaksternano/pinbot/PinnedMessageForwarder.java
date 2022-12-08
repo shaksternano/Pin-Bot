@@ -36,7 +36,7 @@ public class PinnedMessageForwarder {
                                     .submit()
                                     .thenCompose(webhooks -> getOrCreateWebhook(webhooks, textChannel))
                                     .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
-                                    .handle((unused, throwable) -> handleError(unused, throwable, textChannel)),
+                                    .whenComplete((readonlyMessage, throwable) -> handleError(throwable, textChannel)),
                             () -> event.getChannel().sendMessage("No pin channel set!").queue()
                     );
         }
@@ -51,9 +51,7 @@ public class PinnedMessageForwarder {
     }
 
     private static boolean isOwnWebhook(Webhook webhook) {
-        return PinBotSettings.getWebhook(webhook.getChannel().getIdLong())
-                .map(webhookId -> webhookId == webhook.getIdLong())
-                .orElse(false);
+        return webhook.getName().equals("Pin Bot");
     }
 
     private static CompletableFuture<Webhook> createWebhook(TextChannel channel) {
@@ -63,11 +61,7 @@ public class PinnedMessageForwarder {
     private static CompletableFuture<Webhook> createWebhook(TextChannel channel, @Nullable Icon icon) {
         return channel.createWebhook(Main.getJDA().getSelfUser().getName())
                 .setAvatar(icon)
-                .submit()
-                .thenApply(webhook -> {
-                    PinBotSettings.setWebhook(channel.getIdLong(), webhook.getIdLong());
-                    return webhook;
-                });
+                .submit();
     }
 
     /**
@@ -124,11 +118,10 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static <T> T handleError(T t, Throwable throwable, MessageChannel channel) {
+    private static void handleError(Throwable throwable, MessageChannel channel) {
         if (throwable != null) {
             channel.sendMessage("An error occurred while pinning this message.").queue();
             Main.getLogger().error("An error occurred while pinning a message.", throwable);
         }
-        return t;
     }
 }

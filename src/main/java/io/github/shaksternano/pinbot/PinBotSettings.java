@@ -11,73 +11,59 @@ import java.util.stream.Collectors;
 
 public class PinBotSettings {
 
-    private static final DB db = DBMaker.fileDB("pin_bot_settings.mapdb")
+    private static final DB DB = DBMaker.fileDB("pin_bot_settings.mapdb")
             .transactionEnable()
             .make();
 
-    private static final Map<Long, Long> pinChannels = db.hashMap("pinChannels")
+    private static final Map<Long, Long> PIN_CHANNELS = DB.hashMap("pinChannels")
             .keySerializer(Serializer.LONG)
             .valueSerializer(Serializer.LONG)
             .createOrOpen();
 
-    private static final Map<Long, Long> webhooks = db.hashMap("webhooks")
+    private static final Map<Long, Long> SERVER_PIN_CHANNELS = DB.hashMap("serverPinChannels")
             .keySerializer(Serializer.LONG)
             .valueSerializer(Serializer.LONG)
             .createOrOpen();
 
-    private static final Map<Long, Long> serverPinChannels = db.hashMap("serverPinChannels")
-            .keySerializer(Serializer.LONG)
-            .valueSerializer(Serializer.LONG)
-            .createOrOpen();
-
-    private static final Set<Long> usesServerProfile = db.hashSet("usesServerProfile")
+    private static final Set<Long> USES_SERVER_PROFILE = DB.hashSet("usesServerProfile")
             .serializer(Serializer.LONG)
             .createOrOpen();
 
     public static Optional<Long> getPinChannel(long sendPinFromChannelId) {
-        return Optional.ofNullable(pinChannels.get(sendPinFromChannelId));
+        return Optional.ofNullable(PIN_CHANNELS.get(sendPinFromChannelId));
     }
 
     public static Map<Long, Long> getPinChannels(long serverId) {
-        return serverPinChannels
+        return SERVER_PIN_CHANNELS
                 .entrySet()
                 .stream()
                 .filter(entry -> entry.getValue().equals(serverId))
-                .map(entry -> Map.entry(entry.getKey(), pinChannels.get(entry.getKey())))
+                .map(entry -> Map.entry(entry.getKey(), PIN_CHANNELS.get(entry.getKey())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     public static void setPinChannel(long sendPinFromChannelId, long sendPinToChannelId, long serverId) {
-        pinChannels.put(sendPinFromChannelId, sendPinToChannelId);
-        serverPinChannels.put(sendPinFromChannelId, serverId);
-        db.commit();
-    }
-
-    public static Optional<Long> getWebhook(long channelId) {
-        return Optional.ofNullable(webhooks.get(channelId));
-    }
-
-    public static void setWebhook(long channelId, long webhookId) {
-        webhooks.put(channelId, webhookId);
-        db.commit();
+        PIN_CHANNELS.put(sendPinFromChannelId, sendPinToChannelId);
+        SERVER_PIN_CHANNELS.put(sendPinFromChannelId, serverId);
+        DB.commit();
     }
 
     public static void removePinChannel(long sendPinFromChannelId) {
-        pinChannels.remove(sendPinFromChannelId);
-        serverPinChannels.remove(sendPinFromChannelId);
-        db.commit();
+        PIN_CHANNELS.remove(sendPinFromChannelId);
+        SERVER_PIN_CHANNELS.remove(sendPinFromChannelId);
+        DB.commit();
     }
 
     public static boolean usesServerProfile(long serverId) {
-        return usesServerProfile.contains(serverId);
+        return USES_SERVER_PROFILE.contains(serverId);
     }
 
     public static void setUsesServerProfile(long guildId, boolean useServerProfile) {
         if (useServerProfile) {
-            usesServerProfile.add(guildId);
+            USES_SERVER_PROFILE.add(guildId);
         } else {
-            usesServerProfile.remove(guildId);
+            USES_SERVER_PROFILE.remove(guildId);
         }
-        db.commit();
+        DB.commit();
     }
 }
