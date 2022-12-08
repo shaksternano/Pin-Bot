@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
+import net.dv8tion.jda.api.exceptions.HttpException;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -105,9 +106,17 @@ public class PinnedMessageForwarder {
                     .POST(HttpRequest.BodyPublishers.ofString(webhookMessage.toString()))
                     .build();
             return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenCompose(response -> message.unpin().submit());
+                    .thenCompose(response -> {
+                        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                            return message.unpin().submit();
+                        } else {
+                            return CompletableFuture.failedFuture(new HttpException(
+                                    "The webhook message request failed with status code " + response.statusCode() + ". Response body:\n" + response.body())
+                            );
+                        }
+                    });
         } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
