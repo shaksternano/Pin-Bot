@@ -1,8 +1,8 @@
 package io.github.shaksternano.pinbot;
 
-import club.minnced.discord.webhook.WebhookClient;
-import club.minnced.discord.webhook.receive.ReadonlyMessage;
-import club.minnced.discord.webhook.send.WebhookMessageBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -13,11 +13,18 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
 public class PinnedMessageForwarder {
+
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
     public static void tryDeleteSystemPinMessage(MessageReceivedEvent event) {
         if (event.getMessage().getType().equals(MessageType.CHANNEL_PINNED_ADD)
@@ -36,7 +43,7 @@ public class PinnedMessageForwarder {
                                     .submit()
                                     .thenCompose(webhooks -> getOrCreateWebhook(webhooks, textChannel))
                                     .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
-                                    .whenComplete((readonlyMessage, throwable) -> handleError(throwable, textChannel)),
+                                    .whenComplete((unused, throwable) -> handleError(throwable, textChannel)),
                             () -> event.getChannel().sendMessage("No pin channel set!").queue()
                     );
         }
@@ -51,7 +58,7 @@ public class PinnedMessageForwarder {
     }
 
     private static boolean isOwnWebhook(Webhook webhook) {
-        return webhook.getName().equals("Pin Bot");
+        return webhook.getName().equals(Main.getJDA().getSelfUser().getName());
     }
 
     private static CompletableFuture<Webhook> createWebhook(TextChannel channel) {
@@ -84,38 +91,67 @@ public class PinnedMessageForwarder {
         });
     }
 
-    private static CompletableFuture<ReadonlyMessage> forwardPinnedMessage(Message message, Webhook webhook) {
+    private static CompletableFuture<Void> forwardPinnedMessage(Message message, Webhook webhook) {
         String webhookToken = webhook.getToken();
         if (webhookToken == null) {
             throw new IllegalStateException("The webhook token is null.");
         }
-        try (WebhookClient client = WebhookClient.withId(webhook.getIdLong(), webhookToken)) {
-            StringBuilder messageContent = new StringBuilder(message.getContentRaw());
-            for (Message.Attachment attachment : message.getAttachments()) {
-                messageContent.append("\n").append(attachment.getUrl());
-            }
 
-            Guild guild = message.getGuild();
-            User author = message.getAuthor();
-            String username = author.getName();
-            String avatarUrl = author.getEffectiveAvatarUrl();
-            if (PinBotSettings.usesServerProfile(guild.getIdLong())) {
-                Member member = guild.getMember(author);
-                if (member != null) {
-                    username = member.getEffectiveName();
-                    avatarUrl = member.getEffectiveAvatarUrl();
-                }
-            }
-
-            WebhookMessageBuilder messageBuilder = new WebhookMessageBuilder()
-                    .setContent(messageContent.toString())
-                    .setUsername(username)
-                    .setAvatarUrl(avatarUrl);
-            return client.send(messageBuilder.build()).thenApply(readonlyMessage -> {
-                message.unpin().queue();
-                return readonlyMessage;
-            });
+        JsonElement webhookMessage = createWebhookMessage(message);
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(webhook.getUrl()))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(webhookMessage.toString()))
+                    .build();
+            return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenCompose(response -> message.unpin().submit());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
         }
+    }
+
+    private static JsonElement createWebhookMessage(Message message) {
+        StringBuilder messageContent = new StringBuilder(message.getContentRaw());
+        for (Message.Attachment attachment : message.getAttachments()) {
+            messageContent.append("\n").append(attachment.getUrl());
+        }
+
+        Guild guild = message.getGuild();
+        User author = message.getAuthor();
+        String username = author.getName();
+        String avatarUrl = author.getEffectiveAvatarUrl();
+        if (PinBotSettings.usesServerProfile(guild.getIdLong())) {
+            Member member = guild.getMember(author);
+            if (member != null) {
+                username = member.getEffectiveName();
+                avatarUrl = member.getEffectiveAvatarUrl();
+            }
+        }
+
+        JsonObject webhookMessage = new JsonObject();
+        webhookMessage.addProperty("content", messageContent.toString());
+        webhookMessage.addProperty("username", username);
+        webhookMessage.addProperty("avatar_url", avatarUrl);
+
+        JsonArray components = new JsonArray();
+
+        JsonObject actionRow = new JsonObject();
+        actionRow.addProperty("type", 1);
+        JsonArray actionRowComponents = new JsonArray();
+
+        JsonObject messageLinkButton = new JsonObject();
+        messageLinkButton.addProperty("type", 2);
+        messageLinkButton.addProperty("style", 5);
+        messageLinkButton.addProperty("label", "Original Message");
+        messageLinkButton.addProperty("url", message.getJumpUrl());
+
+        actionRowComponents.add(messageLinkButton);
+        actionRow.add("components", actionRowComponents);
+        components.add(actionRow);
+        webhookMessage.add("components", components);
+
+        return webhookMessage;
     }
 
     private static void handleError(Throwable throwable, MessageChannel channel) {
