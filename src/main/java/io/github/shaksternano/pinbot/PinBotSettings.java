@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class PinBotSettings {
 
-    private static final DB DB = DBMaker.fileDB("pin_bot_settings.mapdb")
+    private static final DB DB = DBMaker.fileDB("pin-bot-settings.mapdb")
             .transactionEnable()
             .make();
 
