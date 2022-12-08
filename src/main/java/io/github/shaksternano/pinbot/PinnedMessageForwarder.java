@@ -120,29 +120,25 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<Void> forwardPinnedMessage(Message message, Webhook webhook) {
-        JsonElement webhookMessage = createWebhookMessage(message);
-        return sendWebhookMessage(webhookMessage, webhook)
+        CompletableFuture<UserDetails> future;
+        User author = message.getAuthor();
+        Guild guild = message.getGuild();
+        if (PinBotSettings.usesServerProfile(guild.getIdLong())) {
+            future = guild.retrieveMember(author)
+                    .submit()
+                    .thenApply(member -> new UserDetails(member.getEffectiveName(), member.getEffectiveAvatarUrl()));
+        } else {
+            future = CompletableFuture.completedFuture(new UserDetails(author.getName(), author.getAvatarUrl()));
+        }
+        return future.thenApply(userDetails -> createWebhookMessage(message, userDetails.username(), userDetails.avatarUrl()))
+                .thenCompose(webhookMessage -> sendWebhookMessage(webhookMessage, webhook))
                 .thenCompose(response -> unpinOriginalMessage(message, response));
     }
 
-    private static JsonElement createWebhookMessage(Message message) {
+    private static JsonElement createWebhookMessage(Message message, String username, String avatarUrl) {
         StringBuilder messageContent = new StringBuilder(message.getContentRaw());
         for (Message.Attachment attachment : message.getAttachments()) {
             messageContent.append("\n").append(attachment.getUrl());
-        }
-
-        Guild guild = message.getGuild();
-        User author = message.getAuthor();
-        String username = author.getName();
-        String avatarUrl = author.getEffectiveAvatarUrl();
-        if (PinBotSettings.usesServerProfile(guild.getIdLong())) {
-            Member member = guild.getMember(author);
-            if (member == null) {
-                Main.getLogger().warn("Member for user {} not found in guild {}.", author, guild);
-            } else {
-                username = member.getEffectiveName();
-                avatarUrl = member.getEffectiveAvatarUrl();
-            }
         }
 
         JsonObject webhookMessage = new JsonObject();
@@ -198,5 +194,8 @@ public class PinnedMessageForwarder {
             channel.sendMessage("An error occurred while pinning this message.").queue();
             Main.getLogger().error("An error occurred while pinning a message.", throwable);
         }
+    }
+
+    private record UserDetails(String username, String avatarUrl) {
     }
 }
