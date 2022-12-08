@@ -93,31 +93,9 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<Void> forwardPinnedMessage(Message message, Webhook webhook) {
-        String webhookToken = webhook.getToken();
-        if (webhookToken == null) {
-            throw new IllegalStateException("The webhook token is null.");
-        }
-
         JsonElement webhookMessage = createWebhookMessage(message);
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(webhook.getUrl()))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(webhookMessage.toString()))
-                    .build();
-            return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenCompose(response -> {
-                        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                            return message.unpin().submit();
-                        } else {
-                            return CompletableFuture.failedFuture(new HttpException(
-                                    "The webhook message request failed with status code " + response.statusCode() + ". Response body:\n" + response.body())
-                            );
-                        }
-                    });
-        } catch (URISyntaxException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return sendWebhookMessage(webhookMessage, webhook)
+                .thenCompose(response -> unpinOriginalMessage(message, response));
     }
 
     private static JsonElement createWebhookMessage(Message message) {
@@ -161,6 +139,29 @@ public class PinnedMessageForwarder {
         webhookMessage.add("components", components);
 
         return webhookMessage;
+    }
+
+    private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(JsonElement webhookMessage, Webhook webhook) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(webhook.getUrl()))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(webhookMessage.toString()))
+                    .build();
+            return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+        } catch (URISyntaxException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    private static CompletableFuture<Void> unpinOriginalMessage(Message message, HttpResponse<?> response) {
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            return message.unpin().submit();
+        } else {
+            return CompletableFuture.failedFuture(new HttpException(
+                    "The webhook message request failed with status code " + response.statusCode() + ". Response body:\n" + response.body())
+            );
+        }
     }
 
     private static void handleError(Throwable throwable, MessageChannel channel) {
