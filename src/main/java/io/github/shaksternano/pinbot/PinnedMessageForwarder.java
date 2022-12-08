@@ -137,7 +137,9 @@ public class PinnedMessageForwarder {
         String avatarUrl = author.getEffectiveAvatarUrl();
         if (PinBotSettings.usesServerProfile(guild.getIdLong())) {
             Member member = guild.getMember(author);
-            if (member != null) {
+            if (member == null) {
+                Main.getLogger().warn("Member for user {} not found in guild {}.", author, guild);
+            } else {
                 username = member.getEffectiveName();
                 avatarUrl = member.getEffectiveAvatarUrl();
             }
