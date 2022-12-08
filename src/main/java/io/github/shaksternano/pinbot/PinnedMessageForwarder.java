@@ -10,6 +10,9 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.exceptions.HttpException;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -27,14 +30,38 @@ public class PinnedMessageForwarder {
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-    public static void tryDeleteSystemPinMessage(MessageReceivedEvent event) {
+    public static void sendPinConfirmationAndDeleteSystemMessage(MessageReceivedEvent event) {
         if (event.getMessage().getType().equals(MessageType.CHANNEL_PINNED_ADD)
                 && PinBotSettings.getPinChannel(event.getChannel().getIdLong()).isPresent()) {
-            event.getMessage().delete().queue();
+            MessageReference pinnedMessageReference = event.getMessage().getMessageReference();
+            if (pinnedMessageReference == null) {
+                Main.getLogger().warn("System pin confirmation message has no message reference.");
+            } else {
+                event.getMessage().delete().queue();
+                event.getChannel()
+                        .retrieveMessageById(pinnedMessageReference.getMessageId())
+                        .submit()
+                        .thenCompose(pinnedMessage -> sendPinConfirmation(event, pinnedMessage));
+            }
         }
     }
 
-    public static void tryForwardPinnedMessage(MessageUpdateEvent event) {
+    private static CompletableFuture<Message> sendPinConfirmation(MessageReceivedEvent event, Message pinnedMessage) {
+        return PinBotSettings.getPinChannel(event.getChannel().getIdLong())
+                .map(pinChannelId -> event.getJDA().getChannelById(Channel.class, pinChannelId))
+                .map(pinChannel -> createPinConfirmationMessage(event.getAuthor(), pinChannel, pinnedMessage))
+                .map(messageCreateData -> event.getChannel().sendMessage(messageCreateData).submit())
+                .orElseGet(() -> CompletableFuture.failedFuture(new IllegalArgumentException("No pin channel set for " + event.getChannel() + ".")));
+    }
+
+    private static MessageCreateData createPinConfirmationMessage(User pinner, Channel pinChannel, Message pinnedMessage) {
+        return new MessageCreateBuilder()
+                .addContent(pinner.getAsMention() + " pinned a message to " + pinChannel.getAsMention() + ".")
+                .addActionRow(Button.link(pinnedMessage.getJumpUrl(), "Jump to message"))
+                .build();
+    }
+
+    public static void forwardPinnedMessage(MessageUpdateEvent event) {
         Message message = event.getMessage();
         if (message.isPinned()) {
             Channel channel = event.getChannel();
@@ -130,7 +157,7 @@ public class PinnedMessageForwarder {
         JsonObject messageLinkButton = new JsonObject();
         messageLinkButton.addProperty("type", 2);
         messageLinkButton.addProperty("style", 5);
-        messageLinkButton.addProperty("label", "Original Message");
+        messageLinkButton.addProperty("label", "Original message");
         messageLinkButton.addProperty("url", message.getJumpUrl());
 
         actionRowComponents.add(messageLinkButton);
