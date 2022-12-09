@@ -15,17 +15,26 @@ public class PinBotSettings {
             .transactionEnable()
             .make();
 
+    /**
+     * Maps the ID of a channel A to the ID of a channel B, where pins from channel A are forwarded to channel B.
+     */
     private static final Map<Long, Long> PIN_CHANNELS = DB.hashMap("pinChannels")
             .keySerializer(Serializer.LONG)
             .valueSerializer(Serializer.LONG)
             .createOrOpen();
 
-    private static final Map<Long, Long> SERVER_PIN_CHANNELS = DB.hashMap("serverPinChannels")
+    /**
+     * Maps the ID of a channel where pins are forwarded from to the ID of the guild that the channel belongs to.
+     */
+    private static final Map<Long, Long> GUILD_PIN_CHANNELS = DB.hashMap("guildPinChannels")
             .keySerializer(Serializer.LONG)
             .valueSerializer(Serializer.LONG)
             .createOrOpen();
 
-    private static final Set<Long> USES_SERVER_PROFILE = DB.hashSet("usesServerProfile")
+    /**
+     * A set of IDs of the guilds that use the guild profile for the author of pinned messages.
+     */
+    private static final Set<Long> USES_GUILD_PROFILE = DB.hashSet("usesGuildProfile")
             .serializer(Serializer.LONG)
             .createOrOpen();
 
@@ -33,36 +42,35 @@ public class PinBotSettings {
         return Optional.ofNullable(PIN_CHANNELS.get(sendPinFromChannelId));
     }
 
-    public static Map<Long, Long> getPinChannels(long serverId) {
-        return SERVER_PIN_CHANNELS
-                .entrySet()
+    public static Map<Long, Long> getPinChannels(long guildId) {
+        return GUILD_PIN_CHANNELS.entrySet()
                 .stream()
-                .filter(entry -> entry.getValue().equals(serverId))
+                .filter(entry -> entry.getValue().equals(guildId))
                 .map(entry -> Map.entry(entry.getKey(), PIN_CHANNELS.get(entry.getKey())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public static void setPinChannel(long sendPinFromChannelId, long sendPinToChannelId, long serverId) {
+    public static void setPinChannel(long sendPinFromChannelId, long sendPinToChannelId, long guildId) {
         PIN_CHANNELS.put(sendPinFromChannelId, sendPinToChannelId);
-        SERVER_PIN_CHANNELS.put(sendPinFromChannelId, serverId);
+        GUILD_PIN_CHANNELS.put(sendPinFromChannelId, guildId);
         DB.commit();
     }
 
-    public static void removePinChannel(long sendPinFromChannelId) {
+    public static void removeSendPinFromChannel(long sendPinFromChannelId) {
         PIN_CHANNELS.remove(sendPinFromChannelId);
-        SERVER_PIN_CHANNELS.remove(sendPinFromChannelId);
+        GUILD_PIN_CHANNELS.remove(sendPinFromChannelId);
         DB.commit();
     }
 
-    public static boolean usesServerProfile(long serverId) {
-        return USES_SERVER_PROFILE.contains(serverId);
+    public static boolean usesGuildProfile(long guildId) {
+        return USES_GUILD_PROFILE.contains(guildId);
     }
 
-    public static void setUsesServerProfile(long guildId, boolean useServerProfile) {
-        if (useServerProfile) {
-            USES_SERVER_PROFILE.add(guildId);
+    public static void setUsesGuildProfile(long guildId, boolean useGuildProfile) {
+        if (useGuildProfile) {
+            USES_GUILD_PROFILE.add(guildId);
         } else {
-            USES_SERVER_PROFILE.remove(guildId);
+            USES_GUILD_PROFILE.remove(guildId);
         }
         DB.commit();
     }

@@ -19,7 +19,7 @@ public class RemovePinChannelCommand extends PinSubCommand {
     @Override
     public String execute(SlashCommandInteractionEvent event) {
         Channel sendPinFrom = event.getChannel();
-        PinBotSettings.removePinChannel(sendPinFrom.getIdLong());
+        PinBotSettings.removeSendPinFromChannel(sendPinFrom.getIdLong());
         return "Pins from " + sendPinFrom.getAsMention() + " will no longer be sent to another channel.";
     }
 

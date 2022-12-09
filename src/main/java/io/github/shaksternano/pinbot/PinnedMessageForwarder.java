@@ -123,7 +123,7 @@ public class PinnedMessageForwarder {
         CompletableFuture<UserDetails> future;
         User author = message.getAuthor();
         Guild guild = message.getGuild();
-        if (guild.isMember(author) && PinBotSettings.usesServerProfile(guild.getIdLong())) {
+        if (guild.isMember(author) && PinBotSettings.usesGuildProfile(guild.getIdLong())) {
             future = guild.retrieveMember(author)
                     .submit()
                     .thenApply(member -> new UserDetails(member.getEffectiveName(), member.getEffectiveAvatarUrl()));

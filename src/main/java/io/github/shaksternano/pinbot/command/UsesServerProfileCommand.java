@@ -26,14 +26,14 @@ public class UsesServerProfileCommand extends PinSubCommand {
         return getOptionalOption(event, BOOLEAN_OPTION)
                 .map(OptionMapping::getAsBoolean)
                 .map(usesServerProfile -> {
-                    PinBotSettings.setUsesServerProfile(guild.getIdLong(), usesServerProfile);
+                    PinBotSettings.setUsesGuildProfile(guild.getIdLong(), usesServerProfile);
                     if (usesServerProfile) {
                         return "The server profile of a user is now used.";
                     } else {
                         return "The server profile of a user is no longer used.";
                     }
                 }).orElseGet(() -> {
-                    if (PinBotSettings.usesServerProfile(guild.getIdLong())) {
+                    if (PinBotSettings.usesGuildProfile(guild.getIdLong())) {
                         return "The server profile of a user is used.";
                     } else {
                         return "The server profile of a user is not used.";
