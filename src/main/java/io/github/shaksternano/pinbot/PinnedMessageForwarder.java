@@ -64,14 +64,14 @@ public class PinnedMessageForwarder {
     public static void forwardPinnedMessage(MessageUpdateEvent event) {
         Message message = event.getMessage();
         if (message.isPinned()) {
-            Channel channel = event.getChannel();
+            MessageChannel channel = event.getChannel();
             PinBotSettings.getPinChannel(channel.getIdLong())
                     .map(channelId -> event.getGuild().getChannelById(TextChannel.class, channelId))
                     .ifPresentOrElse(textChannel -> textChannel.retrieveWebhooks()
                                     .submit()
                                     .thenCompose(webhooks -> getOrCreateWebhook(webhooks, textChannel))
                                     .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
-                                    .whenComplete((unused, throwable) -> handleError(throwable, textChannel)),
+                                    .whenComplete((unused, throwable) -> handleError(throwable, channel)),
                             () -> event.getChannel().sendMessage("No pin channel set!").queue()
                     );
         }
