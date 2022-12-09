@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.attribute.IWebhookContainer;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
@@ -66,10 +66,10 @@ public class PinnedMessageForwarder {
         if (message.isPinned()) {
             MessageChannel channel = event.getChannel();
             PinBotSettings.getPinChannel(channel.getIdLong())
-                    .map(channelId -> event.getGuild().getChannelById(TextChannel.class, channelId))
-                    .ifPresentOrElse(textChannel -> textChannel.retrieveWebhooks()
+                    .map(channelId -> event.getGuild().getChannelById(IWebhookContainer.class, channelId))
+                    .ifPresentOrElse(webhookContainer -> webhookContainer.retrieveWebhooks()
                                     .submit()
-                                    .thenCompose(webhooks -> getOrCreateWebhook(webhooks, textChannel))
+                                    .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
                                     .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
                                     .whenComplete((unused, throwable) -> handleError(throwable, channel)),
                             () -> event.getChannel().sendMessage("No pin channel set!").queue()
@@ -77,24 +77,24 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static CompletableFuture<Webhook> getOrCreateWebhook(Collection<Webhook> webhooks, TextChannel channel) {
+    private static CompletableFuture<Webhook> getOrCreateWebhook(Collection<Webhook> webhooks, IWebhookContainer webhookContainer) {
         return webhooks.stream()
                 .filter(PinnedMessageForwarder::isOwnWebhook)
                 .findAny()
                 .map(CompletableFuture::completedFuture)
-                .orElseGet(() -> createWebhook(channel));
+                .orElseGet(() -> createWebhook(webhookContainer));
     }
 
     private static boolean isOwnWebhook(Webhook webhook) {
         return webhook.getName().equals(Main.getJDA().getSelfUser().getName());
     }
 
-    private static CompletableFuture<Webhook> createWebhook(TextChannel channel) {
-        return retrieveSelfIcon().thenCompose(icon -> createWebhook(channel, icon));
+    private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer) {
+        return retrieveSelfIcon().thenCompose(icon -> createWebhook(webhookContainer, icon));
     }
 
-    private static CompletableFuture<Webhook> createWebhook(TextChannel channel, @Nullable Icon icon) {
-        return channel.createWebhook(Main.getJDA().getSelfUser().getName())
+    private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer, @Nullable Icon icon) {
+        return webhookContainer.createWebhook(Main.getJDA().getSelfUser().getName())
                 .setAvatar(icon)
                 .submit();
     }
@@ -141,26 +141,26 @@ public class PinnedMessageForwarder {
             messageContent.append("\n").append(attachment.getUrl());
         }
 
-        JsonObject webhookMessage = new JsonObject();
-        webhookMessage.addProperty("content", messageContent.toString());
-        webhookMessage.addProperty("username", username);
-        webhookMessage.addProperty("avatar_url", avatarUrl);
-
-        JsonArray components = new JsonArray();
-
-        JsonObject actionRow = new JsonObject();
-        actionRow.addProperty("type", 1);
-        JsonArray actionRowComponents = new JsonArray();
-
         JsonObject messageLinkButton = new JsonObject();
         messageLinkButton.addProperty("type", 2);
         messageLinkButton.addProperty("style", 5);
         messageLinkButton.addProperty("label", "Original message");
         messageLinkButton.addProperty("url", message.getJumpUrl());
 
+        JsonArray actionRowComponents = new JsonArray();
         actionRowComponents.add(messageLinkButton);
+
+        JsonObject actionRow = new JsonObject();
+        actionRow.addProperty("type", 1);
         actionRow.add("components", actionRowComponents);
+
+        JsonArray components = new JsonArray();
         components.add(actionRow);
+
+        JsonObject webhookMessage = new JsonObject();
+        webhookMessage.addProperty("content", messageContent.toString());
+        webhookMessage.addProperty("username", username);
+        webhookMessage.addProperty("avatar_url", avatarUrl);
         webhookMessage.add("components", components);
 
         return webhookMessage;
