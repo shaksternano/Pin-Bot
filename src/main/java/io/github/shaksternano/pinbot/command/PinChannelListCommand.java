@@ -22,11 +22,11 @@ public class PinChannelListCommand extends PinSubCommand {
     @Override
     public String execute(SlashCommandInteractionEvent event) {
         Guild guild = getGuild(event);
-        Map<Long, Long> serverPinChannels = PinBotSettings.getPinChannels(guild.getIdLong());
-        if (serverPinChannels.isEmpty()) {
+        Map<Long, Long> guildPinChannels = PinBotSettings.getPinChannels(guild.getIdLong());
+        if (guildPinChannels.isEmpty()) {
             return "There are currently no pin channels set.";
         } else {
-            return "Pin channels:\n" + serverPinChannels
+            return "Pin channels:\n" + guildPinChannels
                     .entrySet()
                     .stream()
                     .map(entry -> {

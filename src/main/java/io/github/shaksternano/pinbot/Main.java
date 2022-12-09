@@ -3,7 +3,7 @@ package io.github.shaksternano.pinbot;
 import io.github.shaksternano.pinbot.command.PinChannelCommand;
 import io.github.shaksternano.pinbot.command.PinChannelListCommand;
 import io.github.shaksternano.pinbot.command.RemovePinChannelCommand;
-import io.github.shaksternano.pinbot.command.UsesServerProfileCommand;
+import io.github.shaksternano.pinbot.command.UsesGuildProfileCommand;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -34,7 +34,7 @@ public class Main {
                 PinChannelCommand.getInstance(),
                 PinChannelListCommand.getInstance(),
                 RemovePinChannelCommand.getInstance(),
-                UsesServerProfileCommand.getInstance()
+                UsesGuildProfileCommand.getInstance()
         );
     }
 
