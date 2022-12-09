@@ -53,17 +53,13 @@ public class PinBotSettings {
     public static void setPinChannel(long sendPinFromChannelId, long sendPinToChannelId, long guildId) {
         boolean modified = PIN_CHANNELS.put(sendPinFromChannelId, sendPinToChannelId) != null;
         modified |= GUILD_PIN_CHANNELS.put(sendPinFromChannelId, guildId) != null;
-        if (modified) {
-            DB.commit();
-        }
+        commitChanges(modified);
     }
 
     public static void removeSendPinFromChannel(long sendPinFromChannelId) {
         boolean modified = PIN_CHANNELS.remove(sendPinFromChannelId) != null;
         modified |= GUILD_PIN_CHANNELS.remove(sendPinFromChannelId) != null;
-        if (modified) {
-            DB.commit();
-        }
+        commitChanges(modified);
     }
 
     public static boolean usesGuildProfile(long guildId) {
@@ -74,6 +70,10 @@ public class PinBotSettings {
         boolean modified = useGuildProfile
                 ? USES_GUILD_PROFILE.add(guildId)
                 : USES_GUILD_PROFILE.remove(guildId);
+        commitChanges(modified);
+    }
+
+    private static void commitChanges(boolean modified) {
         if (modified) {
             DB.commit();
         }
