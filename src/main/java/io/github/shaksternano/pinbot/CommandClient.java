@@ -70,7 +70,7 @@ public class CommandClient {
                 response = "An error occurred while executing the command.";
                 Main.getLogger().error("An error occurred while executing the command " + command, t);
             }
-            event.reply(response).queue();
+            event.reply(response).setEphemeral(true).queue();
         }
     }
 
