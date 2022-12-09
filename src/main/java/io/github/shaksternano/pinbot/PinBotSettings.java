@@ -51,15 +51,15 @@ public class PinBotSettings {
     }
 
     public static void setPinChannel(long sendPinFromChannelId, long sendPinToChannelId, long guildId) {
-        boolean modified = PIN_CHANNELS.put(sendPinFromChannelId, sendPinToChannelId) != null;
-        modified |= GUILD_PIN_CHANNELS.put(sendPinFromChannelId, guildId) != null;
-        commitChanges(modified);
+        PIN_CHANNELS.put(sendPinFromChannelId, sendPinToChannelId);
+        GUILD_PIN_CHANNELS.put(sendPinFromChannelId, guildId);
+        DB.commit();
     }
 
     public static void removeSendPinFromChannel(long sendPinFromChannelId) {
-        boolean modified = PIN_CHANNELS.remove(sendPinFromChannelId) != null;
-        modified |= GUILD_PIN_CHANNELS.remove(sendPinFromChannelId) != null;
-        commitChanges(modified);
+        PIN_CHANNELS.remove(sendPinFromChannelId);
+        GUILD_PIN_CHANNELS.remove(sendPinFromChannelId);
+        DB.commit();
     }
 
     public static boolean usesGuildProfile(long guildId) {
@@ -67,15 +67,11 @@ public class PinBotSettings {
     }
 
     public static void setUsesGuildProfile(long guildId, boolean useGuildProfile) {
-        boolean modified = useGuildProfile
-                ? USES_GUILD_PROFILE.add(guildId)
-                : USES_GUILD_PROFILE.remove(guildId);
-        commitChanges(modified);
-    }
-
-    private static void commitChanges(boolean modified) {
-        if (modified) {
-            DB.commit();
+        if (useGuildProfile) {
+            USES_GUILD_PROFILE.add(guildId);
+        } else {
+            USES_GUILD_PROFILE.remove(guildId);
         }
+        DB.commit();
     }
 }
