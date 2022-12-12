@@ -8,11 +8,11 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import java.util.Collection;
 import java.util.List;
 
-public class RemovePinChannelCommand extends PinSubCommand {
+public class PinChannelRemoveCommand extends PinChannelSubCommand {
 
-    private static final RemovePinChannelCommand INSTANCE = new RemovePinChannelCommand();
+    private static final PinChannelRemoveCommand INSTANCE = new PinChannelRemoveCommand();
 
-    private RemovePinChannelCommand() {
+    private PinChannelRemoveCommand() {
         super("remove", "Stops sending pinned messages from this channel to the pin channel.");
     }
 
@@ -28,7 +28,7 @@ public class RemovePinChannelCommand extends PinSubCommand {
         return List.of();
     }
 
-    public static RemovePinChannelCommand getInstance() {
+    public static PinChannelRemoveCommand getInstance() {
         return INSTANCE;
     }
 }

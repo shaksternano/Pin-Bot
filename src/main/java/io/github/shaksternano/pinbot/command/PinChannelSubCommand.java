@@ -8,9 +8,9 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 
 import java.util.Optional;
 
-public abstract class PinSubCommand extends BaseCommand {
+public abstract class PinChannelSubCommand extends BaseCommand {
 
-    public PinSubCommand(String name, String description) {
+    public PinChannelSubCommand(String name, String description) {
         super(name, description);
     }
 

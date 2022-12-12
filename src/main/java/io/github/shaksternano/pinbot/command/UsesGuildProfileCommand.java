@@ -10,7 +10,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import java.util.Collection;
 import java.util.List;
 
-public class UsesGuildProfileCommand extends PinSubCommand {
+public class UsesGuildProfileCommand extends PinChannelSubCommand {
 
     private static final UsesGuildProfileCommand INSTANCE = new UsesGuildProfileCommand();
 

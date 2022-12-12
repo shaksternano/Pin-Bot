@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class PinChannelListCommand extends PinSubCommand {
+public class PinChannelListCommand extends PinChannelSubCommand {
 
     private static final PinChannelListCommand INSTANCE = new PinChannelListCommand();
 
