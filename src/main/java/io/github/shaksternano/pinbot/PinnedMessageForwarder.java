@@ -65,15 +65,21 @@ public class PinnedMessageForwarder {
         Message message = event.getMessage();
         if (message.isPinned()) {
             MessageChannel channel = event.getChannel();
-            PinBotSettings.getPinChannel(channel.getIdLong())
-                    .map(channelId -> event.getGuild().getChannelById(IWebhookContainer.class, channelId))
-                    .ifPresentOrElse(webhookContainer -> webhookContainer.retrieveWebhooks()
-                                    .submit()
-                                    .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
-                                    .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
-                                    .whenComplete((unused, throwable) -> handleError(throwable, channel)),
-                            () -> event.getChannel().sendMessage("No pin channel set!").queue()
-                    );
+            PinBotSettings.getPinChannel(channel.getIdLong()).ifPresent(channelId -> {
+                Channel pinChannel = event.getGuild().getChannelById(Channel.class, channelId);
+                if (pinChannel instanceof IWebhookContainer webhookContainer) {
+                    webhookContainer.retrieveWebhooks()
+                            .submit()
+                            .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
+                            .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
+                            .whenComplete((unused, throwable) -> handleError(throwable, channel));
+                } else {
+                    if (pinChannel != null) {
+                        event.getChannel().sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
+                    }
+                    PinBotSettings.removeSendPinFromChannel(channel.getIdLong());
+                }
+            });
         }
     }
 
