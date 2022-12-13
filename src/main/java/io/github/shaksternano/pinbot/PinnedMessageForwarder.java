@@ -16,6 +16,7 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -105,20 +106,11 @@ public class PinnedMessageForwarder {
                 .submit();
     }
 
-    /**
-     * Retrieves the icon of the bot.
-     * The icon will be null if the bot has no avatar.
-     *
-     * @return A {@code CompletableFuture} containing the icon of the bot.
-     */
     private static CompletableFuture<Icon> retrieveSelfIcon() {
         return CompletableFuture.supplyAsync(() -> {
-            String avatarUrl = Main.getJDA().getSelfUser().getAvatarUrl();
-            if (avatarUrl == null) {
-                return null;
-            }
-            try {
-                return Icon.from(new URL(avatarUrl).openStream());
+            String avatarUrl = Main.getJDA().getSelfUser().getEffectiveAvatarUrl();
+            try (InputStream iconStream = new URL(avatarUrl).openStream()) {
+                return Icon.from(iconStream);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
