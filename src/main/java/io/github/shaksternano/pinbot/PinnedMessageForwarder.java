@@ -138,7 +138,7 @@ public class PinnedMessageForwarder {
         if (PinBotSettings.usesGuildProfile(guild.getIdLong())) {
             return guild.retrieveMember(author)
                 .submit()
-                .thenApply(member -> new UserDetails(member.getEffectiveName(), member.getEffectiveAvatarUrl()))
+                .thenApply(UserDetails::new)
                 .exceptionally(throwable -> new UserDetails(author));
         } else {
             return CompletableFuture.completedFuture(new UserDetails(author));
@@ -222,6 +222,10 @@ public class PinnedMessageForwarder {
 
         public UserDetails(User user) {
             this(user.getName(), user.getAvatarUrl());
+        }
+
+        public UserDetails(Member member) {
+            this(member.getEffectiveName(), member.getEffectiveAvatarUrl());
         }
     }
 }
