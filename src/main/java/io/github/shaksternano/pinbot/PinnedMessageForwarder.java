@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.attribute.IWebhookContainer;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.sticker.StickerItem;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.exceptions.HttpException;
@@ -145,10 +146,7 @@ public class PinnedMessageForwarder {
     }
 
     private static String createWebhookMessage(Message message, String username, String avatarUrl) {
-        StringBuilder messageContent = new StringBuilder(message.getContentRaw());
-        for (Message.Attachment attachment : message.getAttachments()) {
-            messageContent.append("\n").append(attachment.getUrl());
-        }
+        String messageContent = getMessageContent(message);
 
         JsonObject messageLinkButton = new JsonObject();
         messageLinkButton.addProperty("type", 2);
@@ -167,12 +165,23 @@ public class PinnedMessageForwarder {
         components.add(actionRow);
 
         JsonObject webhookMessage = new JsonObject();
-        webhookMessage.addProperty("content", messageContent.toString());
+        webhookMessage.addProperty("content", messageContent);
         webhookMessage.addProperty("username", username);
         webhookMessage.addProperty("avatar_url", avatarUrl);
         webhookMessage.add("components", components);
 
         return webhookMessage.toString();
+    }
+
+    private static String getMessageContent(Message message) {
+        StringBuilder messageContentBuilder = new StringBuilder(message.getContentRaw());
+        for (Message.Attachment attachment : message.getAttachments()) {
+            messageContentBuilder.append("\n").append(attachment.getUrl());
+        }
+        for (StickerItem sticker : message.getStickers()) {
+            messageContentBuilder.append("\n").append(sticker.getIconUrl());
+        }
+        return messageContentBuilder.toString();
     }
 
     private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String webhookMessage, Webhook webhook) {
