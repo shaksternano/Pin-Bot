@@ -24,21 +24,21 @@ public class UsesGuildProfileCommand extends PinChannelSubCommand {
     public String execute(SlashCommandInteractionEvent event) {
         Guild guild = getGuild(event);
         return getOptionalOption(event, BOOLEAN_OPTION)
-                .map(OptionMapping::getAsBoolean)
-                .map(usesGuildProfile -> {
-                    PinBotSettings.setUsesGuildProfile(guild.getIdLong(), usesGuildProfile);
-                    if (usesGuildProfile) {
-                        return "The server profile of a user is now used.";
-                    } else {
-                        return "The server profile of a user is no longer used.";
-                    }
-                }).orElseGet(() -> {
-                    if (PinBotSettings.usesGuildProfile(guild.getIdLong())) {
-                        return "The server profile of a user is used.";
-                    } else {
-                        return "The server profile of a user is not used.";
-                    }
-                });
+            .map(OptionMapping::getAsBoolean)
+            .map(usesGuildProfile -> {
+                PinBotSettings.setUsesGuildProfile(guild.getIdLong(), usesGuildProfile);
+                if (usesGuildProfile) {
+                    return "The server profile of a user is now used.";
+                } else {
+                    return "The server profile of a user is no longer used.";
+                }
+            }).orElseGet(() -> {
+                if (PinBotSettings.usesGuildProfile(guild.getIdLong())) {
+                    return "The server profile of a user is used.";
+                } else {
+                    return "The server profile of a user is not used.";
+                }
+            });
     }
 
     @Override

@@ -27,14 +27,14 @@ public class PinChannelListCommand extends PinChannelSubCommand {
             return "There are currently no pin channels set.";
         } else {
             return "Pin channels:\n" + guildPinChannels
-                    .entrySet()
-                    .stream()
-                    .map(entry -> {
-                        Channel sendPinFrom = getChannel(guild, entry.getKey());
-                        Channel sendPinTo = getChannel(guild, entry.getValue());
-                        return sendPinFrom.getAsMention() + " -> " + sendPinTo.getAsMention();
-                    })
-                    .collect(Collectors.joining("\n"));
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    Channel sendPinFrom = getChannel(guild, entry.getKey());
+                    Channel sendPinTo = getChannel(guild, entry.getValue());
+                    return sendPinFrom.getAsMention() + " -> " + sendPinTo.getAsMention();
+                })
+                .collect(Collectors.joining("\n"));
         }
     }
 

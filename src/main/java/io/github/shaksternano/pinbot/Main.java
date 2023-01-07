@@ -1,8 +1,8 @@
 package io.github.shaksternano.pinbot;
 
-import io.github.shaksternano.pinbot.command.PinChannelSetCommand;
 import io.github.shaksternano.pinbot.command.PinChannelListCommand;
 import io.github.shaksternano.pinbot.command.PinChannelRemoveCommand;
+import io.github.shaksternano.pinbot.command.PinChannelSetCommand;
 import io.github.shaksternano.pinbot.command.UsesGuildProfileCommand;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -26,15 +26,15 @@ public class Main {
             return;
         }
         jda = JDABuilder.createDefault(token.orElseThrow())
-                .enableIntents(GatewayIntent.MESSAGE_CONTENT)
-                .addEventListeners(PinBotEventListener.getInstance())
-                .build();
+            .enableIntents(GatewayIntent.MESSAGE_CONTENT)
+            .addEventListeners(PinBotEventListener.getInstance())
+            .build();
         CommandClient.addCommands(
-                jda,
-                PinChannelSetCommand.getInstance(),
-                PinChannelListCommand.getInstance(),
-                PinChannelRemoveCommand.getInstance(),
-                UsesGuildProfileCommand.getInstance()
+            jda,
+            PinChannelSetCommand.getInstance(),
+            PinChannelListCommand.getInstance(),
+            PinChannelRemoveCommand.getInstance(),
+            UsesGuildProfileCommand.getInstance()
         );
     }
 

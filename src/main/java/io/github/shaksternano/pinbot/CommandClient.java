@@ -21,29 +21,29 @@ public class CommandClient {
         commandList.add(command);
 
         List<? extends CommandData> ungroupedCommands = commandList.stream()
-                .filter(command1 -> command1.getGroup().isEmpty())
-                .map(CommandClient::createUngroupedCommand)
-                .toList();
+            .filter(command1 -> command1.getGroup().isEmpty())
+            .map(CommandClient::createUngroupedCommand)
+            .toList();
         List<? extends CommandData> groupedCommands = commandList.stream()
-                .filter(command1 -> command1.getGroup().isPresent())
-                .collect(Collectors.groupingBy(command1 -> command1.getGroup().orElseThrow()))
-                .entrySet()
-                .stream()
-                .map(CommandClient::createGroupedCommand)
-                .toList();
+            .filter(command1 -> command1.getGroup().isPresent())
+            .collect(Collectors.groupingBy(command1 -> command1.getGroup().orElseThrow()))
+            .entrySet()
+            .stream()
+            .map(CommandClient::createGroupedCommand)
+            .toList();
 
         jda.updateCommands()
-                .addCommands(ungroupedCommands)
-                .addCommands(groupedCommands)
-                .queue();
+            .addCommands(ungroupedCommands)
+            .addCommands(groupedCommands)
+            .queue();
         CommandClient.addCommands(command, commands);
     }
 
     private static SlashCommandData createUngroupedCommand(Command command) {
         return Commands.slash(command.getName(), command.getDescription())
-                .setDefaultPermissions(command.getPermissions())
-                .setGuildOnly(command.isGuildOnly())
-                .addOptions(command.getOptions());
+            .setDefaultPermissions(command.getPermissions())
+            .setGuildOnly(command.isGuildOnly())
+            .addOptions(command.getOptions());
     }
 
     private static SlashCommandData createGroupedCommand(Map.Entry<String, List<Command>> commandGroup) {
@@ -53,13 +53,13 @@ public class CommandClient {
         DefaultMemberPermissions permissions = firstCommand.getPermissions();
         boolean guildOnly = firstCommand.isGuildOnly();
         List<SubcommandData> subCommands = commands.stream()
-                .map(command -> new SubcommandData(command.getName(), command.getDescription())
-                        .addOptions(command.getOptions())
-                ).toList();
+            .map(command -> new SubcommandData(command.getName(), command.getDescription())
+                .addOptions(command.getOptions())
+            ).toList();
         return Commands.slash(group, group)
-                .setDefaultPermissions(permissions)
-                .setGuildOnly(guildOnly)
-                .addSubcommands(subCommands);
+            .setDefaultPermissions(permissions)
+            .setGuildOnly(guildOnly)
+            .addSubcommands(subCommands);
     }
 
     public static void handleCommand(SlashCommandInteractionEvent event) {
@@ -89,8 +89,8 @@ public class CommandClient {
 
     private static void addCommand(Command command) {
         COMMANDS.put(
-                command.getGroup().orElse("") + " " + command.getName(),
-                command
+            command.getGroup().orElse("") + " " + command.getName(),
+            command
         );
     }
 }
