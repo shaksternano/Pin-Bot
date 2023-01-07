@@ -202,12 +202,11 @@ public class PinnedMessageForwarder {
             return message.unpin().submit();
         } else {
             return CompletableFuture.failedFuture(new HttpException(
-                    "The webhook message request failed with status code "
-                        + response.statusCode()
-                        + ". Response body:\n"
-                        + response.body()
-                )
-            );
+                "The webhook message request failed with status code "
+                    + response.statusCode()
+                    + ". Response body:\n"
+                    + response.body()
+            ));
         }
     }
 
