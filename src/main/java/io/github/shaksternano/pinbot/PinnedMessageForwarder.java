@@ -36,7 +36,7 @@ public class PinnedMessageForwarder {
             && PinBotSettings.getPinChannel(event.getChannel().getIdLong()).isPresent()) {
             MessageReference pinnedMessageReference = event.getMessage().getMessageReference();
             if (pinnedMessageReference == null) {
-                Main.getLogger().warn("System pin confirmation message has no message reference.");
+                Main.getLogger().error("System pin confirmation message has no message reference.");
             } else {
                 event.getMessage().delete().queue();
                 event.getChannel()
