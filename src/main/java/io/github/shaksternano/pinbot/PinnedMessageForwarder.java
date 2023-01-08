@@ -134,7 +134,8 @@ public class PinnedMessageForwarder {
         return retrieveUserDetails(author, guild)
             .thenApply(userDetails -> createWebhookMessage(message, userDetails.username(), userDetails.avatarUrl()))
             .thenCompose(webhookMessage -> sendWebhookMessage(webhookMessage, webhook))
-            .thenCompose(response -> unpinOriginalMessage(message, response));
+            .thenAccept(PinnedMessageForwarder::handleResponse)
+            .thenCompose(unused -> unpinOriginalMessage(message));
     }
 
     private static CompletableFuture<UserDetails> retrieveUserDetails(User author, Guild guild) {
@@ -200,17 +201,20 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static CompletableFuture<Void> unpinOriginalMessage(Message message, HttpResponse<?> response) {
-        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            return message.unpin().submit();
-        } else {
-            return CompletableFuture.failedFuture(new HttpException(
+    private static void handleResponse(HttpResponse<?> response) {
+        // Check if status code is not 2xx
+        if (response.statusCode() / 100 != 2) {
+            throw new HttpException(
                 "The webhook message request failed with status code "
                     + response.statusCode()
                     + ". Response body:\n"
                     + response.body()
-            ));
+            );
         }
+    }
+
+    private static CompletableFuture<Void> unpinOriginalMessage(Message message) {
+        return message.unpin().submit();
     }
 
     private static CompletableFuture<Void> handleError(Throwable throwable, MessageChannel channel) {
