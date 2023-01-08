@@ -62,35 +62,38 @@ public class PinnedMessageForwarder {
             .build();
     }
 
-    public static void forwardPinnedMessage(MessageUpdateEvent event) {
+    public static void forwardMessageIfPinned(MessageUpdateEvent event) {
         Message message = event.getMessage();
         if (message.isPinned()) {
-            MessageChannel channel = event.getChannel();
-            PinBotSettings.getPinChannel(channel.getIdLong()).ifPresent(channelId -> {
-                Channel pinChannel = event.getGuild().getChannelById(Channel.class, channelId);
-                if (pinChannel instanceof IWebhookContainer webhookContainer) {
-                    webhookContainer.retrieveWebhooks()
-                        .submit()
-                        .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
-                        .thenCompose(webhook -> forwardPinnedMessage(message, webhook))
-                        .exceptionallyCompose(throwable -> handleError(throwable, channel));
-                } else {
-                    if (pinChannel != null) {
-                        event.getChannel().sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
-                    }
-                    PinBotSettings.removeSendPinFromChannel(channel.getIdLong());
-                }
-            });
+            PinBotSettings.getPinChannel(event.getChannel().getIdLong())
+                .ifPresent(pinChannelId -> forwardPinnedMessage(message, pinChannelId));
+        }
+    }
+
+    private static void forwardPinnedMessage(Message message, long pinChannelId) {
+        MessageChannel sentFrom = message.getChannel();
+        Channel pinChannel = message.getGuild().getChannelById(Channel.class, pinChannelId);
+        if (pinChannel instanceof IWebhookContainer webhookContainer) {
+            webhookContainer.retrieveWebhooks()
+                .submit()
+                .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
+                .thenCompose(webhook -> forwardMessageToWebhook(message, webhook))
+                .exceptionallyCompose(throwable -> handleError(throwable, sentFrom));
+        } else {
+            if (pinChannel != null) {
+                sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
+            }
+            PinBotSettings.removeSendPinFromChannel(sentFrom.getIdLong());
         }
     }
 
     private static CompletableFuture<Webhook> getOrCreateWebhook(Collection<Webhook> webhooks, IWebhookContainer webhookContainer) {
-        return getWebhook(webhooks)
+        return getOwnWebhook(webhooks)
             .map(CompletableFuture::completedFuture)
             .orElseGet(() -> createWebhook(webhookContainer));
     }
 
-    private static Optional<Webhook> getWebhook(Collection<Webhook> webhooks) {
+    private static Optional<Webhook> getOwnWebhook(Collection<Webhook> webhooks) {
         return webhooks.stream()
             .filter(PinnedMessageForwarder::isOwnWebhook)
             .findAny();
@@ -103,12 +106,6 @@ public class PinnedMessageForwarder {
     private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer) {
         return retrieveIcon(Main.getJDA().getSelfUser())
             .thenCompose(iconOptional -> createWebhook(webhookContainer, iconOptional.orElse(null)));
-    }
-
-    private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer, @Nullable Icon icon) {
-        return webhookContainer.createWebhook(Main.getJDA().getSelfUser().getName())
-            .setAvatar(icon)
-            .submit();
     }
 
     private static CompletableFuture<Optional<Icon>> retrieveIcon(User user) {
@@ -125,7 +122,13 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static CompletableFuture<Void> forwardPinnedMessage(Message message, Webhook webhook) {
+    private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer, @Nullable Icon icon) {
+        return webhookContainer.createWebhook(Main.getJDA().getSelfUser().getName())
+            .setAvatar(icon)
+            .submit();
+    }
+
+    private static CompletableFuture<Void> forwardMessageToWebhook(Message message, Webhook webhook) {
         User author = message.getAuthor();
         Guild guild = message.getGuild();
         return retrieveUserDetails(author, guild)
@@ -214,7 +217,7 @@ public class PinnedMessageForwarder {
         Main.getLogger().error("An error occurred while pinning a message.", throwable);
         return channel.sendMessage("An error occurred while pinning this message.")
             .submit()
-            .thenApply(message -> null);
+            .thenApply(unused -> null);
     }
 
     private record UserDetails(String username, String avatarUrl) {
