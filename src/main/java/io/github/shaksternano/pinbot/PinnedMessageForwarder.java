@@ -227,7 +227,7 @@ public class PinnedMessageForwarder {
     private record UserDetails(String username, String avatarUrl) {
 
         public UserDetails(User user) {
-            this(user.getName(), user.getAvatarUrl());
+            this(user.getName(), user.getEffectiveAvatarUrl());
         }
 
         public UserDetails(Member member) {
