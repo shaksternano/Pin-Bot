@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Pin Bot");
-    private static JDA jda;
 
     public static void main(String[] args) {
         System.setProperty("log4j2.contextSelector", "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector");
@@ -23,7 +22,7 @@ public class Main {
     }
 
     private static void init(String token) {
-        jda = JDABuilder.createDefault(token)
+        JDA jda = JDABuilder.createDefault(token)
             .enableIntents(GatewayIntent.MESSAGE_CONTENT)
             .addEventListeners(PinBotEventListener.getInstance())
             .build();
@@ -47,9 +46,5 @@ public class Main {
 
     public static Logger getLogger() {
         return LOGGER;
-    }
-
-    public static JDA getJDA() {
-        return jda;
     }
 }

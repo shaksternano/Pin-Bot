@@ -4,6 +4,7 @@ import io.github.shaksternano.pinbot.PinBotSettings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.attribute.IWebhookContainer;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -27,12 +28,17 @@ public class PinChannelSetCommand extends PinChannelSubCommand {
         OptionMapping mapping = getRequiredOption(event, CHANNEL_OPTION);
         Channel sendPinFrom = event.getChannel();
         Channel sendPinTo = mapping.getAsChannel();
-        if (sendPinTo instanceof IWebhookContainer) {
+        if (isValidChannel(sendPinTo)) {
             PinBotSettings.setPinChannel(sendPinFrom.getIdLong(), sendPinTo.getIdLong(), guild.getIdLong());
             return "Pins from " + sendPinFrom.getAsMention() + " will now be sent to " + sendPinTo.getAsMention() + ".";
         } else {
             return sendPinTo.getAsMention() + " is not a message channel that supports webhooks!";
         }
+    }
+
+    private static boolean isValidChannel(Channel channel) {
+        return channel instanceof IWebhookContainer
+            || channel instanceof ThreadChannel threadChannel && threadChannel.getParentChannel() instanceof IWebhookContainer;
     }
 
     @Override

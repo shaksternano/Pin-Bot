@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.attribute.IWebhookContainer;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.sticker.StickerItem;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -57,17 +58,25 @@ public class PinnedMessageForwarder {
     private static void forwardPinnedMessage(Message message, long pinChannelId) {
         MessageChannel sentFrom = message.getChannel();
         Channel pinChannel = message.getGuild().getChannelById(Channel.class, pinChannelId);
-        if (pinChannel instanceof IWebhookContainer webhookContainer) {
-            webhookContainer.retrieveWebhooks()
+        getWebhookContainer(pinChannel).ifPresentOrElse(
+            webhookContainer -> webhookContainer.retrieveWebhooks()
                 .submit()
                 .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
+                .thenApply(webhook -> getWebhookUrl(webhook, pinChannel))
                 .thenCompose(webhook -> forwardMessageToWebhook(message, webhook))
-                .whenComplete((unused, throwable) -> handleError(throwable, sentFrom));
+                .whenComplete((unused, throwable) -> handleError(throwable, sentFrom)),
+            () -> handleNoWebhookSupport(sentFrom, pinChannel)
+        );
+    }
+
+    private static Optional<IWebhookContainer> getWebhookContainer(Channel channel) {
+        if (channel instanceof ThreadChannel threadChannel) {
+            channel = threadChannel.getParentChannel();
+        }
+        if (channel instanceof IWebhookContainer webhookContainer) {
+            return Optional.of(webhookContainer);
         } else {
-            if (pinChannel != null) {
-                sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
-            }
-            PinBotSettings.removeSendPinFromChannel(sentFrom.getIdLong());
+            return Optional.empty();
         }
     }
 
@@ -77,6 +86,14 @@ public class PinnedMessageForwarder {
             .orElseGet(() -> createWebhook(webhookContainer));
     }
 
+    private static String getWebhookUrl(Webhook webhook, Channel sendTo) {
+        String webhookUrl = webhook.getUrl();
+        if (sendTo instanceof ThreadChannel) {
+            webhookUrl += "?thread_id=" + sendTo.getId();
+        }
+        return webhookUrl;
+    }
+
     private static Optional<Webhook> getOwnWebhook(Collection<Webhook> webhooks) {
         return webhooks.stream()
             .filter(PinnedMessageForwarder::isOwnWebhook)
@@ -84,11 +101,11 @@ public class PinnedMessageForwarder {
     }
 
     private static boolean isOwnWebhook(Webhook webhook) {
-        return webhook.getName().equals(Main.getJDA().getSelfUser().getName());
+        return webhook.getName().equals(webhook.getJDA().getSelfUser().getName());
     }
 
     private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer) {
-        return retrieveIcon(Main.getJDA().getSelfUser())
+        return retrieveIcon(webhookContainer.getJDA().getSelfUser())
             .thenCompose(iconOptional -> createWebhook(webhookContainer, iconOptional.orElse(null)));
     }
 
@@ -107,17 +124,17 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer, @Nullable Icon icon) {
-        return webhookContainer.createWebhook(Main.getJDA().getSelfUser().getName())
+        return webhookContainer.createWebhook(webhookContainer.getJDA().getSelfUser().getName())
             .setAvatar(icon)
             .submit();
     }
 
-    private static CompletableFuture<Void> forwardMessageToWebhook(Message message, Webhook webhook) {
+    private static CompletableFuture<Void> forwardMessageToWebhook(Message message, String webhookUrl) {
         User author = message.getAuthor();
         Guild guild = message.getGuild();
         return retrieveUserDetails(author, guild)
             .thenApply(userDetails -> createWebhookMessage(message, userDetails.username(), userDetails.avatarUrl()))
-            .thenCompose(webhookMessage -> sendWebhookMessage(webhookMessage, webhook))
+            .thenCompose(webhookMessage -> sendWebhookMessage(webhookMessage, webhookUrl))
             .thenAccept(PinnedMessageForwarder::handleResponse)
             .thenCompose(unused -> CompletableFuture.allOf(
                 sendPinConfirmation(message),
@@ -175,10 +192,10 @@ public class PinnedMessageForwarder {
         return messageContentBuilder.toString();
     }
 
-    private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String webhookMessage, Webhook webhook) {
+    private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String webhookMessage, String webhookUrl) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI(webhook.getUrl()))
+                .uri(new URI(webhookUrl))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(webhookMessage))
                 .build();
@@ -217,6 +234,13 @@ public class PinnedMessageForwarder {
             Main.getLogger().error("An error occurred while pinning a message.", throwable);
             channel.sendMessage("An error occurred while pinning this message.").queue();
         }
+    }
+
+    private static void handleNoWebhookSupport(MessageChannel sentFrom, @Nullable Channel pinChannel) {
+        if (pinChannel != null) {
+            sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
+        }
+        PinBotSettings.removeSendPinFromChannel(sentFrom.getIdLong());
     }
 
     private record UserDetails(String username, String avatarUrl) {
