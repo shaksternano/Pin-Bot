@@ -62,7 +62,7 @@ public class PinnedMessageForwarder {
                 .submit()
                 .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
                 .thenCompose(webhook -> forwardMessageToWebhook(message, webhook))
-                .exceptionallyCompose(throwable -> handleError(throwable, sentFrom));
+                .whenComplete((unused, throwable) -> handleError(throwable, sentFrom));
         } else {
             if (pinChannel != null) {
                 sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
@@ -212,11 +212,11 @@ public class PinnedMessageForwarder {
         return pinned.unpin().submit();
     }
 
-    private static <T> CompletableFuture<T> handleError(Throwable throwable, MessageChannel channel) {
-        Main.getLogger().error("An error occurred while pinning a message.", throwable);
-        return channel.sendMessage("An error occurred while pinning this message.")
-            .submit()
-            .thenApply(unused -> null);
+    private static void handleError(@Nullable Throwable throwable, MessageChannel channel) {
+        if (throwable != null) {
+            Main.getLogger().error("An error occurred while pinning a message.", throwable);
+            channel.sendMessage("An error occurred while pinning this message.").queue();
+        }
     }
 
     private record UserDetails(String username, String avatarUrl) {
