@@ -14,7 +14,9 @@ repositories {
 }
 
 dependencies {
-    implementation("net.dv8tion:JDA:${project.property("jda_version")}")
+    implementation("net.dv8tion:JDA:${project.property("jda_version")}") {
+        exclude(module = "opus-java")
+    }
     implementation("org.mapdb:mapdb:${project.property("mabdb_version")}")
     implementation("com.google.code.gson:gson:${project.property("google_gson_version")}")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:${project.property("apache_log4j_2_version")}")
