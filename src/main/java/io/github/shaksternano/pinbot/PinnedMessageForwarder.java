@@ -101,7 +101,7 @@ public class PinnedMessageForwarder {
     }
 
     private static boolean isOwnWebhook(Webhook webhook) {
-        return webhook.getName().equals(webhook.getJDA().getSelfUser().getName());
+        return webhook.getJDA().getSelfUser().equals(webhook.getOwnerAsUser());
     }
 
     private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer) {
