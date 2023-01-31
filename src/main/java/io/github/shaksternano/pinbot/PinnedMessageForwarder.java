@@ -32,11 +32,38 @@ public class PinnedMessageForwarder {
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-    public static void deletePinMessage(MessageReceivedEvent event) {
-        Message message = event.getMessage();
-        if (message.getType().equals(MessageType.CHANNEL_PINNED_ADD)
-            && PinBotSettings.getPinChannel(event.getChannel().getIdLong()).isPresent()) {
-            message.delete().queue();
+    public static void sendCustomPinConfirmationIfPinChannelSet(MessageReceivedEvent event) {
+        Message pinConfirmation = event.getMessage();
+        MessageChannel sentFrom = event.getChannel();
+        if (pinConfirmation.getType().equals(MessageType.CHANNEL_PINNED_ADD)) {
+            PinBotSettings.getPinChannel(sentFrom.getIdLong())
+                .ifPresent(pinChannelId -> sendCustomPinConfirmation(pinConfirmation, pinChannelId));
+        }
+    }
+
+    private static void sendCustomPinConfirmation(Message pinConfirmation, long pinChannelId) {
+        MessageReference pinnedMessageReference = pinConfirmation.getMessageReference();
+        if (pinnedMessageReference == null) {
+            Main.getLogger().error("System pin confirmation message has no message reference.");
+        } else {
+            MessageChannel sentFrom = pinConfirmation.getChannel();
+            User pinner = pinConfirmation.getAuthor();
+            pinConfirmation.delete().queue();
+            sentFrom.retrieveMessageById(pinnedMessageReference.getMessageId())
+                .submit()
+                .thenCompose(pinnedMessage -> sendPinConfirmation(sentFrom, pinChannelId, pinner, pinnedMessage))
+                .whenComplete((unused, throwable) -> handleError(throwable, sentFrom));
+        }
+    }
+
+    private static CompletableFuture<Message> sendPinConfirmation(MessageChannel sendTo, long pinChannelId, User pinner, Message pinnedMessage) {
+        Channel pinChannel = sendTo.getJDA().getChannelById(Channel.class, pinChannelId);
+        if (pinChannel == null) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("No pin channel set for " + sendTo + "."));
+        } else {
+            try (MessageCreateData customPinConfirmation = createPinConfirmationMessage(pinner, pinChannel, pinnedMessage)) {
+                return sendTo.sendMessage(customPinConfirmation).submit();
+            }
         }
     }
 
@@ -136,10 +163,7 @@ public class PinnedMessageForwarder {
             .thenApply(userDetails -> createWebhookMessage(message, userDetails.username(), userDetails.avatarUrl()))
             .thenCompose(webhookMessage -> sendWebhookMessage(webhookMessage, webhookUrl))
             .thenAccept(PinnedMessageForwarder::handleResponse)
-            .thenCompose(unused -> CompletableFuture.allOf(
-                sendPinConfirmation(message),
-                unpinOriginalMessage(message)
-            ));
+            .thenCompose(unused -> unpinOriginalMessage(message));
     }
 
     private static CompletableFuture<UserDetails> retrieveUserDetails(User author, Guild guild) {
@@ -215,14 +239,6 @@ public class PinnedMessageForwarder {
                     + response.body()
             );
         }
-    }
-
-    private static CompletableFuture<Message> sendPinConfirmation(Message pinned) {
-        return PinBotSettings.getPinChannel(pinned.getChannel().getIdLong())
-            .map(pinChannelId -> pinned.getJDA().getChannelById(Channel.class, pinChannelId))
-            .map(pinChannel -> createPinConfirmationMessage(pinned.getAuthor(), pinChannel, pinned))
-            .map(messageCreateData -> pinned.getChannel().sendMessage(messageCreateData).submit())
-            .orElseGet(() -> CompletableFuture.failedFuture(new IllegalArgumentException("No pin channel set for " + pinned.getChannel() + ".")));
     }
 
     private static CompletableFuture<Void> unpinOriginalMessage(Message pinned) {
