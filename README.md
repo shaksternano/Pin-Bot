@@ -20,7 +20,7 @@ It sends pinned messages from a channel to a dedicated pin channel.
 }
 ```
 
-4. Run the bot's JAR file by either double-clicking it or running `java -jar pin-bot-VERSION.jar` in the command line, replacing `VERSION` with the version of the bot.
+4. Run the bot's JAR file by running `java -jar pin-bot-VERSION.jar` in the command line, replacing `VERSION` with the version of the bot.
 
 ## Usage
 
