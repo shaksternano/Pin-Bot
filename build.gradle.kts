@@ -26,21 +26,23 @@ dependencies {
 }
 
 tasks {
+    jar {
+        enabled = false
+    }
+
     named<ShadowJar>("shadowJar") {
-        archiveBaseName.set("${project.property("archives_base_name")}-shadow")
+        archiveClassifier.set("")
         mergeServiceFiles()
         manifest {
             attributes(mapOf("Main-Class" to "${project.group}.pinbot.Main"))
         }
     }
-}
 
-tasks {
     build {
         dependsOn(shadowJar)
     }
-}
 
-tasks.getByName<Test>("test") {
-    useJUnitPlatform()
+    withType<Test> {
+        useJUnitPlatform()
+    }
 }
