@@ -38,3 +38,4 @@ run/
 *.log
 *.mapdb
 *.mapdb.wal.0
+config.json
