@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.exceptions.HttpException;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.utils.SplitUtil;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.Nullable;
@@ -24,12 +25,15 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class PinnedMessageForwarder {
 
+    private static final int MESSAGE_LENGTH_LIMIT = 2000;
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
     public static void sendCustomPinConfirmationIfPinChannelSet(MessageReceivedEvent event) {
@@ -145,7 +149,7 @@ public class PinnedMessageForwarder {
         try (InputStream iconStream = new URL(avatarUrl).openStream()) {
             return Optional.of(Icon.from(iconStream));
         } catch (IOException e) {
-            Main.getLogger().error("Failed to create icon for " + user, e);
+            Main.getLogger().error("Failed to create icon for " + user + ".", e);
             return Optional.empty();
         }
     }
@@ -160,9 +164,8 @@ public class PinnedMessageForwarder {
         User author = message.getAuthor();
         Guild guild = message.getGuild();
         return retrieveUserDetails(author, guild)
-            .thenApply(userDetails -> createWebhookMessage(message, userDetails.username(), userDetails.avatarUrl()))
-            .thenCompose(webhookMessage -> sendWebhookMessage(webhookMessage, webhookUrl))
-            .thenAccept(PinnedMessageForwarder::handleResponse)
+            .thenApply(userDetails -> createWebhookRequests(message, userDetails.username(), userDetails.avatarUrl()))
+            .thenCompose(requestBodies -> sendWebhookMessages(requestBodies, webhookUrl))
             .thenCompose(unused -> unpinOriginalMessage(message));
     }
 
@@ -177,35 +180,19 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static String createWebhookMessage(Message message, String username, String avatarUrl) {
-        String messageContent = getMessageContent(message);
-
-        JsonObject messageLinkButton = new JsonObject();
-        messageLinkButton.addProperty("type", 2);
-        messageLinkButton.addProperty("style", 5);
-        messageLinkButton.addProperty("label", "Original message");
-        messageLinkButton.addProperty("url", message.getJumpUrl());
-
-        JsonArray actionRowComponents = new JsonArray();
-        actionRowComponents.add(messageLinkButton);
-
-        JsonObject actionRow = new JsonObject();
-        actionRow.addProperty("type", 1);
-        actionRow.add("components", actionRowComponents);
-
-        JsonArray components = new JsonArray();
-        components.add(actionRow);
-
-        JsonObject webhookMessage = new JsonObject();
-        webhookMessage.addProperty("content", messageContent);
-        webhookMessage.addProperty("username", username);
-        webhookMessage.addProperty("avatar_url", avatarUrl);
-        webhookMessage.add("components", components);
-
-        return webhookMessage.toString();
+    private static List<String> createWebhookRequests(Message message, String username, String avatarUrl) {
+        List<String> messageContents = getMessageContent(message);
+        List<String> requestBodies = new ArrayList<>();
+        for (int i = 0; i < messageContents.size(); i++) {
+            String messageContent = messageContents.get(i);
+            boolean lastElement = i == messageContents.size() - 1;
+            String requestBody = createWebhookRequest(messageContent, username, avatarUrl, message.getJumpUrl(), lastElement);
+            requestBodies.add(requestBody);
+        }
+        return requestBodies;
     }
 
-    private static String getMessageContent(Message message) {
+    private static List<String> getMessageContent(Message message) {
         StringBuilder messageContentBuilder = new StringBuilder(message.getContentRaw());
         for (Message.Attachment attachment : message.getAttachments()) {
             messageContentBuilder.append("\n").append(attachment.getUrl());
@@ -213,31 +200,80 @@ public class PinnedMessageForwarder {
         for (StickerItem sticker : message.getStickers()) {
             messageContentBuilder.append("\n").append(sticker.getIconUrl());
         }
-        return messageContentBuilder.toString();
+        return SplitUtil.split(
+            messageContentBuilder.toString(),
+            MESSAGE_LENGTH_LIMIT,
+            true,
+            SplitUtil.Strategy.NEWLINE,
+            SplitUtil.Strategy.WHITESPACE,
+            SplitUtil.Strategy.ANYWHERE
+        );
     }
 
-    private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String webhookMessage, String webhookUrl) {
+    private static String createWebhookRequest(String messageContent, String username, String avatarUrl, String originalMessageUrl, boolean originalMessageButton) {
+        JsonObject requestBody = new JsonObject();
+        requestBody.addProperty("content", messageContent);
+        requestBody.addProperty("username", username);
+        requestBody.addProperty("avatar_url", avatarUrl);
+
+        if (originalMessageButton) {
+            JsonObject messageLinkButton = new JsonObject();
+            messageLinkButton.addProperty("type", 2);
+            messageLinkButton.addProperty("style", 5);
+            messageLinkButton.addProperty("label", "Original message");
+            messageLinkButton.addProperty("url", originalMessageUrl);
+
+            JsonArray actionRowComponents = new JsonArray();
+            actionRowComponents.add(messageLinkButton);
+
+            JsonObject actionRow = new JsonObject();
+            actionRow.addProperty("type", 1);
+            actionRow.add("components", actionRowComponents);
+
+            JsonArray components = new JsonArray();
+            components.add(actionRow);
+            requestBody.add("components", components);
+        }
+
+        return requestBody.toString();
+    }
+
+    private static CompletableFuture<Void> sendWebhookMessages(Iterable<String> requestBodies, String webhookUrl) {
+        CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
+        for (String requestBody : requestBodies) {
+            future = future.thenCompose(unused -> sendWebhookMessage(requestBody, webhookUrl))
+                .thenApply(unused -> null);
+        }
+        return future;
+    }
+
+    private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String requestBody, String webhookUrl) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(new URI(webhookUrl))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(webhookMessage))
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
-            return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+            return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .whenComplete(PinnedMessageForwarder::handleResponse);
         } catch (URISyntaxException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
-    private static void handleResponse(HttpResponse<?> response) {
-        // Check if status code is not 2xx
-        if (response.statusCode() / 100 != 2) {
-            throw new HttpException(
-                "The webhook message request failed with status code "
-                    + response.statusCode()
-                    + ". Response body:\n"
-                    + response.body()
-            );
+    private static void handleResponse(HttpResponse<?> response, Throwable throwable) {
+        if (throwable == null) {
+            // Check if status code is not 2xx
+            if (response.statusCode() / 100 != 2) {
+                throw new HttpException(
+                    "The webhook message request failed with status code "
+                        + response.statusCode()
+                        + ". Response body:\n"
+                        + response.body()
+                );
+            }
+        } else {
+            throw new HttpException("Failed to send webhook message.", throwable);
         }
     }
 
@@ -254,7 +290,7 @@ public class PinnedMessageForwarder {
 
     private static void handleNoWebhookSupport(MessageChannel sentFrom, @Nullable Channel pinChannel) {
         if (pinChannel != null) {
-            sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks!.").queue();
+            sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks.").queue();
         }
         PinBotSettings.removeSendPinFromChannel(sentFrom.getIdLong());
     }
