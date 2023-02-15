@@ -10,7 +10,7 @@ It sends pinned messages from a channel to a dedicated pin channel.
 1. Install [Java 17](https://adoptium.net) or higher.
 2. [Create a Discord bot and get its token](https://discordpy.readthedocs.io/en/stable/discord.html). Give the bot the following permissions:
 
-<img src="assets/screenshots/bot-permissions.png" alt="Bot permissions" width="1000">
+<img src="assets/screenshots/bot-permissions.png" alt="Bot permissions">
 
 3. Create a file called `config.json` in the same directory as the bot's JAR file with the following content, replacing `123456789` with your bot's token.:
 
