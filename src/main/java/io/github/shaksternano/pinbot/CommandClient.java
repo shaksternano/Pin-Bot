@@ -88,8 +88,12 @@ public class CommandClient {
     }
 
     private static void addCommand(Command command) {
+        String name = command.getName();
+        String fullName = command.getGroup()
+            .map(group -> group + " " + name)
+            .orElse(name);
         COMMANDS.put(
-            command.getGroup().orElse("") + " " + command.getName(),
+            fullName,
             command
         );
     }
