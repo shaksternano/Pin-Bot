@@ -12,7 +12,7 @@ It sends pinned messages from a channel to a dedicated pin channel.
 
 <img src="assets/screenshots/bot-permissions.png" alt="Bot permissions">
 
-3. Create a file called `config.json` in the same directory as the bot's JAR file with the following content, replacing `123456789` with your bot's token.:
+3. Create a file called `config.json` in the same directory as the bot's JAR file with the following content, replacing `123456789` with your bot's token:
 
 ```json
 {
