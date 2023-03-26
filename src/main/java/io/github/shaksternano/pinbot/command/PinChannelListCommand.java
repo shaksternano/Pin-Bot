@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.List;
@@ -26,14 +27,11 @@ public class PinChannelListCommand extends PinChannelSubCommand {
         if (guildPinChannels.isEmpty()) {
             return "There are currently no pin channels set.";
         } else {
-            return "Pin channels:\n" + guildPinChannels
-                .entrySet()
+            return "Pin channels:\n" + guildPinChannels.entrySet()
                 .stream()
-                .map(entry -> {
-                    Channel sendPinFrom = getChannel(guild, entry.getKey());
-                    Channel sendPinTo = getChannel(guild, entry.getValue());
-                    return sendPinFrom.getAsMention() + " -> " + sendPinTo.getAsMention();
-                })
+                .map(entry -> new ChannelPair(entry, guild))
+                .filter(ChannelPair::isValid)
+                .map(ChannelPair::pinChannelListEntry)
                 .collect(Collectors.joining("\n"));
         }
     }
@@ -45,5 +43,41 @@ public class PinChannelListCommand extends PinChannelSubCommand {
 
     public static PinChannelListCommand getInstance() {
         return INSTANCE;
+    }
+
+    private record ChannelPair(@Nullable Channel sendPinFrom, @Nullable Channel sendPinTo) {
+
+        private ChannelPair(Map.Entry<Long, Long> entry, Guild guild) {
+            this(
+                guild.getChannelById(Channel.class, entry.getKey()),
+                guild.getChannelById(Channel.class, entry.getValue())
+            );
+        }
+
+        private boolean isValid() {
+            return sendPinFrom != null && sendPinTo != null;
+        }
+
+        private String pinChannelListEntry() {
+            return sendPinFrom().getAsMention() + " -> " + sendPinTo().getAsMention();
+        }
+
+        @Override
+        public Channel sendPinFrom() {
+            if (sendPinFrom == null) {
+                throw new IllegalStateException("sendPinFrom is null");
+            } else {
+                return sendPinFrom;
+            }
+        }
+
+        @Override
+        public Channel sendPinTo() {
+            if (sendPinTo == null) {
+                throw new IllegalStateException("sendPinTo is null");
+            } else {
+                return sendPinTo;
+            }
+        }
     }
 }
