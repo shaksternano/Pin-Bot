@@ -1,7 +1,7 @@
 package io.github.shaksternano.pinbot.command;
 
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -21,7 +21,10 @@ public abstract class PinChannelSubCommand extends BaseCommand {
 
     @Override
     public DefaultMemberPermissions getPermissions() {
-        return DefaultMemberPermissions.DISABLED;
+        return DefaultMemberPermissions.enabledFor(
+            Permission.MESSAGE_MANAGE,
+            Permission.MANAGE_CHANNEL
+        );
     }
 
     @Override
@@ -49,14 +52,5 @@ public abstract class PinChannelSubCommand extends BaseCommand {
 
     protected Optional<OptionMapping> getOptionalOption(SlashCommandInteractionEvent event, String name) {
         return Optional.ofNullable(event.getOption(name));
-    }
-
-    protected Channel getChannel(Guild guild, long id) {
-        Channel channel = guild.getChannelById(Channel.class, id);
-        if (channel == null) {
-            throw new IllegalArgumentException("Channel with id " + id + " not found.");
-        } else {
-            return channel;
-        }
     }
 }
