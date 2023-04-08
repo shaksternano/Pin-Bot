@@ -1,5 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
     id("java")
     id("com.github.johnrengelman.shadow") version "7.1.2"
@@ -30,7 +28,7 @@ tasks {
         enabled = false
     }
 
-    named<ShadowJar>("shadowJar") {
+    shadowJar {
         archiveClassifier.set("")
         mergeServiceFiles()
         manifest {
@@ -42,7 +40,7 @@ tasks {
         dependsOn(shadowJar)
     }
 
-    withType<Test> {
+    test {
         useJUnitPlatform()
     }
 }
