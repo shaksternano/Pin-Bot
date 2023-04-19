@@ -37,7 +37,7 @@ public class PinnedMessageForwarder {
         var pinConfirmation = event.getMessage();
         var sentFrom = event.getChannel();
         if (pinConfirmation.getType().equals(MessageType.CHANNEL_PINNED_ADD)) {
-            PinBotSettings.getPinChannel(sentFrom.getIdLong())
+            Database.getPinChannel(sentFrom.getIdLong())
                 .ifPresent(pinChannelId -> sendCustomPinConfirmation(pinConfirmation, pinChannelId));
         }
     }
@@ -78,7 +78,7 @@ public class PinnedMessageForwarder {
     public static void forwardMessageIfPinned(MessageUpdateEvent event) {
         var message = event.getMessage();
         if (message.isPinned()) {
-            PinBotSettings.getPinChannel(event.getChannel().getIdLong())
+            Database.getPinChannel(event.getChannel().getIdLong())
                 .ifPresent(pinChannelId -> forwardPinnedMessage(message, pinChannelId));
         }
     }
@@ -167,7 +167,7 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<UserDetails> retrieveUserDetails(User author, Guild guild) {
-        if (PinBotSettings.usesGuildProfile(guild.getIdLong())) {
+        if (Database.usesGuildProfile(guild.getIdLong())) {
             return guild.retrieveMember(author)
                 .submit()
                 .thenApply(UserDetails::new)
@@ -290,7 +290,7 @@ public class PinnedMessageForwarder {
         if (pinChannel != null) {
             sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks.").queue();
         }
-        PinBotSettings.removeSendPinFromChannel(sentFrom.getIdLong());
+        Database.removeSendPinFromChannel(sentFrom.getIdLong());
     }
 
     private record UserDetails(String username, String avatarUrl) {

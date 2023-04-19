@@ -1,6 +1,6 @@
 package io.github.shaksternano.pinbot.command;
 
-import io.github.shaksternano.pinbot.PinBotSettings;
+import io.github.shaksternano.pinbot.Database;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
@@ -18,7 +18,7 @@ public class PinChannelRemoveCommand extends PinChannelSubCommand {
     @Override
     public String execute(SlashCommandInteractionEvent event) {
         var sendPinFrom = event.getChannel();
-        PinBotSettings.removeSendPinFromChannel(sendPinFrom.getIdLong());
+        Database.removeSendPinFromChannel(sendPinFrom.getIdLong());
         return "Pins from " + sendPinFrom.getAsMention() + " will no longer be sent to another channel.";
     }
 

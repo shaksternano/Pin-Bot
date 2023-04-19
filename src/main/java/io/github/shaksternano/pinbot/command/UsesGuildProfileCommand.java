@@ -1,6 +1,6 @@
 package io.github.shaksternano.pinbot.command;
 
-import io.github.shaksternano.pinbot.PinBotSettings;
+import io.github.shaksternano.pinbot.Database;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -25,14 +25,14 @@ public class UsesGuildProfileCommand extends PinChannelSubCommand {
         return getOptionalOption(event, BOOLEAN_OPTION)
             .map(OptionMapping::getAsBoolean)
             .map(usesGuildProfile -> {
-                PinBotSettings.setUsesGuildProfile(guild.getIdLong(), usesGuildProfile);
+                Database.setUsesGuildProfile(guild.getIdLong(), usesGuildProfile);
                 if (usesGuildProfile) {
                     return "The server profile of a user is now used.";
                 } else {
                     return "The server profile of a user is no longer used.";
                 }
             }).orElseGet(() -> {
-                if (PinBotSettings.usesGuildProfile(guild.getIdLong())) {
+                if (Database.usesGuildProfile(guild.getIdLong())) {
                     return "The server profile of a user is used.";
                 } else {
                     return "The server profile of a user is not used.";

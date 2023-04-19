@@ -1,6 +1,6 @@
 package io.github.shaksternano.pinbot.command;
 
-import io.github.shaksternano.pinbot.PinBotSettings;
+import io.github.shaksternano.pinbot.Database;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -23,7 +23,7 @@ public class PinChannelListCommand extends PinChannelSubCommand {
     @Override
     public String execute(SlashCommandInteractionEvent event) {
         var guild = getGuild(event);
-        var guildPinChannels = PinBotSettings.getPinChannels(guild.getIdLong());
+        var guildPinChannels = Database.getPinChannels(guild.getIdLong());
         if (guildPinChannels.isEmpty()) {
             return "There are currently no pin channels set.";
         } else {
