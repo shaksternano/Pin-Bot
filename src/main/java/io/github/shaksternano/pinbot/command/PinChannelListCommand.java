@@ -22,8 +22,8 @@ public class PinChannelListCommand extends PinChannelSubCommand {
 
     @Override
     public String execute(SlashCommandInteractionEvent event) {
-        Guild guild = getGuild(event);
-        Map<Long, Long> guildPinChannels = PinBotSettings.getPinChannels(guild.getIdLong());
+        var guild = getGuild(event);
+        var guildPinChannels = PinBotSettings.getPinChannels(guild.getIdLong());
         if (guildPinChannels.isEmpty()) {
             return "There are currently no pin channels set.";
         } else {

@@ -1,7 +1,6 @@
 package io.github.shaksternano.pinbot.command;
 
 import io.github.shaksternano.pinbot.PinBotSettings;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -22,7 +21,7 @@ public class UsesGuildProfileCommand extends PinChannelSubCommand {
 
     @Override
     public String execute(SlashCommandInteractionEvent event) {
-        Guild guild = getGuild(event);
+        var guild = getGuild(event);
         return getOptionalOption(event, BOOLEAN_OPTION)
             .map(OptionMapping::getAsBoolean)
             .map(usesGuildProfile -> {

@@ -3,8 +3,6 @@ package io.github.shaksternano.pinbot;
 import io.github.shaksternano.pinbot.command.Command;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
@@ -14,17 +12,17 @@ import java.util.stream.Collectors;
 
 public class CommandClient {
 
-    public static final Map<String, Command> COMMANDS = new HashMap<>();
+    private static final Map<String, Command> commands = new HashMap<>();
 
     public static void addCommands(JDA jda, Command command, Command... commands) {
-        List<Command> commandList = new ArrayList<>(Arrays.asList(commands));
+        var commandList = new ArrayList<>(Arrays.asList(commands));
         commandList.add(command);
 
-        List<? extends CommandData> ungroupedCommands = commandList.stream()
+        var ungroupedCommands = commandList.stream()
             .filter(command1 -> command1.getGroup().isEmpty())
             .map(CommandClient::createUngroupedCommand)
             .toList();
-        List<? extends CommandData> groupedCommands = commandList.stream()
+        var groupedCommands = commandList.stream()
             .filter(command1 -> command1.getGroup().isPresent())
             .collect(Collectors.groupingBy(command1 -> command1.getGroup().orElseThrow()))
             .entrySet()
@@ -47,12 +45,12 @@ public class CommandClient {
     }
 
     private static SlashCommandData createGroupedCommand(Map.Entry<String, List<Command>> commandGroup) {
-        String group = commandGroup.getKey();
-        List<Command> commands = commandGroup.getValue();
-        Command firstCommand = commands.get(0);
-        DefaultMemberPermissions permissions = firstCommand.getPermissions();
-        boolean guildOnly = firstCommand.isGuildOnly();
-        List<SubcommandData> subCommands = commands.stream()
+        var group = commandGroup.getKey();
+        var commands = commandGroup.getValue();
+        var firstCommand = commands.get(0);
+        var permissions = firstCommand.getPermissions();
+        var guildOnly = firstCommand.isGuildOnly();
+        var subCommands = commands.stream()
             .map(command -> new SubcommandData(command.getName(), command.getDescription())
                 .addOptions(command.getOptions())
             ).toList();
@@ -63,11 +61,11 @@ public class CommandClient {
     }
 
     public static void handleCommand(SlashCommandInteractionEvent event) {
-        String commandName = event.getName();
+        var commandName = event.getName();
         if (event.getSubcommandName() != null) {
             commandName += " " + event.getSubcommandName();
         }
-        Command command = COMMANDS.get(commandName);
+        var command = commands.get(commandName);
         if (command != null) {
             String response;
             try {
@@ -82,17 +80,17 @@ public class CommandClient {
 
     private static void addCommands(Command command, Command... commands) {
         addCommand(command);
-        for (Command c : commands) {
-            addCommand(c);
+        for (var command1 : commands) {
+            addCommand(command1);
         }
     }
 
     private static void addCommand(Command command) {
-        String name = command.getName();
-        String fullName = command.getGroup()
+        var name = command.getName();
+        var fullName = command.getGroup()
             .map(group -> group + " " + name)
             .orElse(name);
-        COMMANDS.put(
+        commands.put(
             fullName,
             command
         );

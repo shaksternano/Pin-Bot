@@ -33,7 +33,7 @@ public abstract class PinChannelSubCommand extends BaseCommand {
     }
 
     protected Guild getGuild(SlashCommandInteractionEvent event) {
-        Guild guild = event.getGuild();
+        var guild = event.getGuild();
         if (guild == null) {
             throw new IllegalArgumentException("Command used in a private channel (direct message).");
         } else {
@@ -42,7 +42,7 @@ public abstract class PinChannelSubCommand extends BaseCommand {
     }
 
     protected OptionMapping getRequiredOption(SlashCommandInteractionEvent event, String name) {
-        OptionMapping option = event.getOption(name);
+        var option = event.getOption(name);
         if (option == null) {
             throw new IllegalArgumentException("No option with name " + name + " provided.");
         } else {

@@ -7,7 +7,6 @@ import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.attribute.IWebhookContainer;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.sticker.StickerItem;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.exceptions.HttpException;
@@ -18,7 +17,6 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -34,11 +32,10 @@ import java.util.concurrent.CompletableFuture;
 public class PinnedMessageForwarder {
 
     private static final int MESSAGE_LENGTH_LIMIT = 2000;
-    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
     public static void sendCustomPinConfirmationIfPinChannelSet(MessageReceivedEvent event) {
-        Message pinConfirmation = event.getMessage();
-        MessageChannel sentFrom = event.getChannel();
+        var pinConfirmation = event.getMessage();
+        var sentFrom = event.getChannel();
         if (pinConfirmation.getType().equals(MessageType.CHANNEL_PINNED_ADD)) {
             PinBotSettings.getPinChannel(sentFrom.getIdLong())
                 .ifPresent(pinChannelId -> sendCustomPinConfirmation(pinConfirmation, pinChannelId));
@@ -46,12 +43,12 @@ public class PinnedMessageForwarder {
     }
 
     private static void sendCustomPinConfirmation(Message pinConfirmation, long pinChannelId) {
-        MessageReference pinnedMessageReference = pinConfirmation.getMessageReference();
+        var pinnedMessageReference = pinConfirmation.getMessageReference();
         if (pinnedMessageReference == null) {
             Main.getLogger().error("System pin confirmation message has no message reference.");
         } else {
-            MessageChannel sentFrom = pinConfirmation.getChannel();
-            User pinner = pinConfirmation.getAuthor();
+            var sentFrom = pinConfirmation.getChannel();
+            var pinner = pinConfirmation.getAuthor();
             pinConfirmation.delete().queue();
             sentFrom.retrieveMessageById(pinnedMessageReference.getMessageId())
                 .submit()
@@ -61,11 +58,11 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<Message> sendPinConfirmation(MessageChannel sendTo, long pinChannelId, User pinner, Message pinnedMessage) {
-        Channel pinChannel = sendTo.getJDA().getChannelById(Channel.class, pinChannelId);
+        var pinChannel = sendTo.getJDA().getChannelById(Channel.class, pinChannelId);
         if (pinChannel == null) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("No pin channel set for " + sendTo + "."));
         } else {
-            try (MessageCreateData customPinConfirmation = createPinConfirmationMessage(pinner, pinChannel, pinnedMessage)) {
+            try (var customPinConfirmation = createPinConfirmationMessage(pinner, pinChannel, pinnedMessage)) {
                 return sendTo.sendMessage(customPinConfirmation).submit();
             }
         }
@@ -79,7 +76,7 @@ public class PinnedMessageForwarder {
     }
 
     public static void forwardMessageIfPinned(MessageUpdateEvent event) {
-        Message message = event.getMessage();
+        var message = event.getMessage();
         if (message.isPinned()) {
             PinBotSettings.getPinChannel(event.getChannel().getIdLong())
                 .ifPresent(pinChannelId -> forwardPinnedMessage(message, pinChannelId));
@@ -87,8 +84,8 @@ public class PinnedMessageForwarder {
     }
 
     private static void forwardPinnedMessage(Message message, long pinChannelId) {
-        MessageChannel sentFrom = message.getChannel();
-        Channel pinChannel = message.getGuild().getChannelById(Channel.class, pinChannelId);
+        var sentFrom = message.getChannel();
+        var pinChannel = message.getGuild().getChannelById(Channel.class, pinChannelId);
         getWebhookContainer(pinChannel).ifPresentOrElse(
             webhookContainer -> webhookContainer.retrieveWebhooks()
                 .submit()
@@ -118,7 +115,7 @@ public class PinnedMessageForwarder {
     }
 
     private static String getWebhookUrl(Webhook webhook, Channel sendTo) {
-        String webhookUrl = webhook.getUrl();
+        var webhookUrl = webhook.getUrl();
         if (sendTo instanceof ThreadChannel) {
             webhookUrl += "?thread_id=" + sendTo.getId();
         }
@@ -145,8 +142,8 @@ public class PinnedMessageForwarder {
     }
 
     private static Optional<Icon> getIcon(User user) {
-        String avatarUrl = user.getEffectiveAvatarUrl();
-        try (InputStream iconStream = new URL(avatarUrl).openStream()) {
+        var avatarUrl = user.getEffectiveAvatarUrl();
+        try (var iconStream = new URL(avatarUrl).openStream()) {
             return Optional.of(Icon.from(iconStream));
         } catch (IOException e) {
             Main.getLogger().error("Failed to create icon for " + user + ".", e);
@@ -161,8 +158,8 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<Void> forwardMessageToWebhook(Message message, String webhookUrl) {
-        User author = message.getAuthor();
-        Guild guild = message.getGuild();
+        var author = message.getAuthor();
+        var guild = message.getGuild();
         return retrieveUserDetails(author, guild)
             .thenApply(userDetails -> createWebhookRequests(message, userDetails.username(), userDetails.avatarUrl()))
             .thenCompose(requestBodies -> sendWebhookMessages(requestBodies, webhookUrl))
@@ -181,7 +178,7 @@ public class PinnedMessageForwarder {
     }
 
     private static List<String> createWebhookRequests(Message message, String username, String avatarUrl) {
-        List<String> messageContents = getMessageContent(message);
+        var messageContents = getMessageContent(message);
         List<String> requestBodies = new ArrayList<>();
         for (int i = 0; i < messageContents.size(); i++) {
             String messageContent = messageContents.get(i);
@@ -193,11 +190,11 @@ public class PinnedMessageForwarder {
     }
 
     private static List<String> getMessageContent(Message message) {
-        StringBuilder messageContentBuilder = new StringBuilder(message.getContentRaw());
-        for (Message.Attachment attachment : message.getAttachments()) {
+        var messageContentBuilder = new StringBuilder(message.getContentRaw());
+        for (var attachment : message.getAttachments()) {
             messageContentBuilder.append("\n").append(attachment.getUrl());
         }
-        for (StickerItem sticker : message.getStickers()) {
+        for (var sticker : message.getStickers()) {
             messageContentBuilder.append("\n").append(sticker.getIconUrl());
         }
         return SplitUtil.split(
@@ -211,26 +208,26 @@ public class PinnedMessageForwarder {
     }
 
     private static String createWebhookRequest(String messageContent, String username, String avatarUrl, String originalMessageUrl, boolean originalMessageButton) {
-        JsonObject requestBody = new JsonObject();
+        var requestBody = new JsonObject();
         requestBody.addProperty("content", messageContent);
         requestBody.addProperty("username", username);
         requestBody.addProperty("avatar_url", avatarUrl);
 
         if (originalMessageButton) {
-            JsonObject messageLinkButton = new JsonObject();
+            var messageLinkButton = new JsonObject();
             messageLinkButton.addProperty("type", 2);
             messageLinkButton.addProperty("style", 5);
             messageLinkButton.addProperty("label", "Original message");
             messageLinkButton.addProperty("url", originalMessageUrl);
 
-            JsonArray actionRowComponents = new JsonArray();
+            var actionRowComponents = new JsonArray();
             actionRowComponents.add(messageLinkButton);
 
-            JsonObject actionRow = new JsonObject();
+            var actionRow = new JsonObject();
             actionRow.addProperty("type", 1);
             actionRow.add("components", actionRowComponents);
 
-            JsonArray components = new JsonArray();
+            var components = new JsonArray();
             components.add(actionRow);
             requestBody.add("components", components);
         }
@@ -240,7 +237,7 @@ public class PinnedMessageForwarder {
 
     private static CompletableFuture<Void> sendWebhookMessages(Iterable<String> requestBodies, String webhookUrl) {
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
-        for (String requestBody : requestBodies) {
+        for (var requestBody : requestBodies) {
             future = future.thenCompose(unused -> sendWebhookMessage(requestBody, webhookUrl))
                 .thenApply(unused -> null);
         }
@@ -249,12 +246,13 @@ public class PinnedMessageForwarder {
 
     private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String requestBody, String webhookUrl) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            var request = HttpRequest.newBuilder()
                 .uri(new URI(webhookUrl))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
-            return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            return HttpClient.newHttpClient()
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .whenComplete(PinnedMessageForwarder::handleResponse);
         } catch (URISyntaxException e) {
             return CompletableFuture.failedFuture(e);

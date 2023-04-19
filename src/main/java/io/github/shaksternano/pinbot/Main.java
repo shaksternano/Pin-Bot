@@ -4,7 +4,6 @@ import io.github.shaksternano.pinbot.command.PinChannelListCommand;
 import io.github.shaksternano.pinbot.command.PinChannelRemoveCommand;
 import io.github.shaksternano.pinbot.command.PinChannelSetCommand;
 import io.github.shaksternano.pinbot.command.UsesGuildProfileCommand;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
@@ -19,7 +18,7 @@ public class Main {
     public static void main(String[] args) {
         System.setProperty("log4j2.contextSelector", "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector");
         try {
-            BotConfig config = BotConfig.parse(new File(BotConfig.FILE_NAME));
+            var config = BotConfig.parse(new File(BotConfig.FILE_NAME));
             init(config);
         } catch (Exception e) {
             getLogger().error("Error reading " + BotConfig.FILE_NAME + " file.", e);
@@ -27,7 +26,7 @@ public class Main {
     }
 
     private static void init(BotConfig config) {
-        JDA jda = JDABuilder.createDefault(config.token())
+        var jda = JDABuilder.createDefault(config.token())
             .enableIntents(GatewayIntent.MESSAGE_CONTENT)
             .addEventListeners(PinBotEventListener.getInstance())
             .build();

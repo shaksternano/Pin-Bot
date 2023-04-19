@@ -31,7 +31,7 @@ public class PinBotEventListener extends ListenerAdapter {
 
     @Override
     public void onChannelDelete(@NotNull ChannelDeleteEvent event) {
-        long channelId = event.getChannel().getIdLong();
+        var channelId = event.getChannel().getIdLong();
         PinBotSettings.getPinChannel(channelId).ifPresent(pinChannelId -> PinBotSettings.removeSendPinFromChannel(channelId));
     }
 
