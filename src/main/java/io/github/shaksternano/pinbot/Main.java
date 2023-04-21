@@ -17,12 +17,14 @@ public class Main {
 
     public static void main(String[] args) {
         System.setProperty("log4j2.contextSelector", "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector");
+        BotConfig config;
         try {
-            var config = BotConfig.parse(new File(BotConfig.FILE_NAME));
-            init(config);
+            config = BotConfig.parse(new File(BotConfig.FILE_NAME));
         } catch (Exception e) {
             getLogger().error("Error reading " + BotConfig.FILE_NAME + " file.", e);
+            return;
         }
+        init(config);
     }
 
     private static void init(BotConfig config) {
