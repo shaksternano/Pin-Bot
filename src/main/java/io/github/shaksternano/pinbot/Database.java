@@ -13,6 +13,7 @@ public class Database {
 
     private static final DB DB = DBMaker.fileDB("database.mapdb")
         .transactionEnable()
+        .closeOnJvmShutdown()
         .make();
 
     /**
