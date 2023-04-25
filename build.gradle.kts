@@ -31,8 +31,14 @@ tasks {
     shadowJar {
         archiveClassifier.set("")
         mergeServiceFiles()
+        minimize {
+            exclude(dependency("org.apache.logging.log4j:.*:.*"))
+            exclude(dependency("org.mapdb:.*:.*"))
+        }
         manifest {
-            attributes(mapOf("Main-Class" to "${project.group}.pinbot.Main"))
+            attributes(mapOf(
+                "Main-Class" to "${project.group}.Main",
+            ))
         }
     }
 
