@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 public class PinChannelListCommand extends PinChannelSubCommand {
 
-    private static final PinChannelListCommand INSTANCE = new PinChannelListCommand();
+    public static final PinChannelListCommand INSTANCE = new PinChannelListCommand();
 
     private PinChannelListCommand() {
         super("list", "Lists all channels that are currently sending pins to another channel.");
@@ -39,10 +39,6 @@ public class PinChannelListCommand extends PinChannelSubCommand {
     @Override
     public Collection<OptionData> getOptions() {
         return List.of();
-    }
-
-    public static PinChannelListCommand getInstance() {
-        return INSTANCE;
     }
 
     private record ChannelPair(@Nullable Channel sendPinFrom, @Nullable Channel sendPinTo) {

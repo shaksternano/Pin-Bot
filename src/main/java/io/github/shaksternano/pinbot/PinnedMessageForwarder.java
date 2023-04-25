@@ -181,9 +181,9 @@ public class PinnedMessageForwarder {
         var messageContents = getMessageContent(message);
         List<String> requestBodies = new ArrayList<>();
         for (int i = 0; i < messageContents.size(); i++) {
-            String messageContent = messageContents.get(i);
-            boolean lastElement = i == messageContents.size() - 1;
-            String requestBody = createWebhookRequest(messageContent, username, avatarUrl, message.getJumpUrl(), lastElement);
+            var messageContent = messageContents.get(i);
+            var lastElement = i == messageContents.size() - 1;
+            var requestBody = createWebhookRequest(messageContent, username, avatarUrl, message.getJumpUrl(), lastElement);
             requestBodies.add(requestBody);
         }
         return requestBodies;

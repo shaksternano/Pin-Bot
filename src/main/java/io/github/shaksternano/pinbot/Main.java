@@ -28,16 +28,16 @@ public class Main {
     }
 
     private static void init(BotConfig config) {
-        var jda = JDABuilder.createDefault(config.token())
+        var jda = JDABuilder.createLight(config.token())
             .enableIntents(GatewayIntent.MESSAGE_CONTENT)
-            .addEventListeners(PinBotEventListener.getInstance())
+            .addEventListeners(PinBotEventListener.INSTANCE)
             .build();
         CommandClient.addCommands(
             jda,
-            PinChannelSetCommand.getInstance(),
-            PinChannelListCommand.getInstance(),
-            PinChannelRemoveCommand.getInstance(),
-            UsesGuildProfileCommand.getInstance()
+            PinChannelSetCommand.INSTANCE,
+            PinChannelListCommand.INSTANCE,
+            PinChannelRemoveCommand.INSTANCE,
+            UsesGuildProfileCommand.INSTANCE
         );
     }
 

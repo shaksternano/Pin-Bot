@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class PinBotEventListener extends ListenerAdapter {
 
-    private static final PinBotEventListener INSTANCE = new PinBotEventListener();
+    public static final PinBotEventListener INSTANCE = new PinBotEventListener();
 
     private PinBotEventListener() {
     }
@@ -33,9 +33,5 @@ public class PinBotEventListener extends ListenerAdapter {
     public void onChannelDelete(@NotNull ChannelDeleteEvent event) {
         var channelId = event.getChannel().getIdLong();
         Database.getPinChannel(channelId).ifPresent(pinChannelId -> Database.removeSendPinFromChannel(channelId));
-    }
-
-    public static PinBotEventListener getInstance() {
-        return INSTANCE;
     }
 }

@@ -13,7 +13,7 @@ import java.util.List;
 
 public class PinChannelSetCommand extends PinChannelSubCommand {
 
-    private static final PinChannelSetCommand INSTANCE = new PinChannelSetCommand();
+    public static final PinChannelSetCommand INSTANCE = new PinChannelSetCommand();
     private static final String CHANNEL_OPTION = "channel";
 
     private PinChannelSetCommand() {
@@ -42,9 +42,5 @@ public class PinChannelSetCommand extends PinChannelSubCommand {
     @Override
     public Collection<OptionData> getOptions() {
         return List.of(new OptionData(OptionType.CHANNEL, CHANNEL_OPTION, "The channel where pins from this channel are sent to.", true));
-    }
-
-    public static PinChannelSetCommand getInstance() {
-        return INSTANCE;
     }
 }

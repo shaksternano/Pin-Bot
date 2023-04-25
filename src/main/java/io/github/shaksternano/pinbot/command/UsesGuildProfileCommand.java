@@ -11,7 +11,7 @@ import java.util.List;
 
 public class UsesGuildProfileCommand extends PinChannelSubCommand {
 
-    private static final UsesGuildProfileCommand INSTANCE = new UsesGuildProfileCommand();
+    public static final UsesGuildProfileCommand INSTANCE = new UsesGuildProfileCommand();
 
     private static final String BOOLEAN_OPTION = "boolean";
 
@@ -43,9 +43,5 @@ public class UsesGuildProfileCommand extends PinChannelSubCommand {
     @Override
     public Collection<OptionData> getOptions() {
         return List.of(new OptionData(OptionType.BOOLEAN, BOOLEAN_OPTION, "Sets if the server profile of a user is used.", false));
-    }
-
-    public static UsesGuildProfileCommand getInstance() {
-        return INSTANCE;
     }
 }

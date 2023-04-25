@@ -9,7 +9,7 @@ import java.util.List;
 
 public class PinChannelRemoveCommand extends PinChannelSubCommand {
 
-    private static final PinChannelRemoveCommand INSTANCE = new PinChannelRemoveCommand();
+    public static final PinChannelRemoveCommand INSTANCE = new PinChannelRemoveCommand();
 
     private PinChannelRemoveCommand() {
         super("remove", "Stops sending pinned messages from this channel to the pin channel.");
@@ -25,9 +25,5 @@ public class PinChannelRemoveCommand extends PinChannelSubCommand {
     @Override
     public Collection<OptionData> getOptions() {
         return List.of();
-    }
-
-    public static PinChannelRemoveCommand getInstance() {
-        return INSTANCE;
     }
 }
