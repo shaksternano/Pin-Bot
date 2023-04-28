@@ -31,8 +31,6 @@ import java.util.concurrent.CompletableFuture;
 
 public class PinnedMessageForwarder {
 
-    private static final int MESSAGE_LENGTH_LIMIT = 2000;
-
     public static void sendCustomPinConfirmationIfPinChannelSet(MessageReceivedEvent event) {
         var pinConfirmation = event.getMessage();
         var sentFrom = event.getChannel();
@@ -199,7 +197,7 @@ public class PinnedMessageForwarder {
         }
         return SplitUtil.split(
             messageContentBuilder.toString(),
-            MESSAGE_LENGTH_LIMIT,
+            Message.MAX_CONTENT_LENGTH,
             true,
             SplitUtil.Strategy.NEWLINE,
             SplitUtil.Strategy.WHITESPACE,
