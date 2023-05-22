@@ -95,7 +95,7 @@ public class PinnedMessageForwarder {
         );
     }
 
-    private static Optional<IWebhookContainer> getWebhookContainer(Channel channel) {
+    private static Optional<IWebhookContainer> getWebhookContainer(@Nullable Channel channel) {
         if (channel instanceof ThreadChannel threadChannel) {
             channel = threadChannel.getParentChannel();
         }
@@ -131,12 +131,8 @@ public class PinnedMessageForwarder {
     }
 
     private static CompletableFuture<Webhook> createWebhook(IWebhookContainer webhookContainer) {
-        return retrieveIcon(webhookContainer.getJDA().getSelfUser())
-            .thenCompose(iconOptional -> createWebhook(webhookContainer, iconOptional.orElse(null)));
-    }
-
-    private static CompletableFuture<Optional<Icon>> retrieveIcon(User user) {
-        return CompletableFuture.supplyAsync(() -> getIcon(user));
+        var icon = getIcon(webhookContainer.getJDA().getSelfUser()).orElse(null);
+        return createWebhook(webhookContainer, icon);
     }
 
     private static Optional<Icon> getIcon(User user) {
@@ -288,7 +284,7 @@ public class PinnedMessageForwarder {
         if (pinChannel != null) {
             sentFrom.sendMessage(pinChannel.getAsMention() + " doesn't support webhooks.").queue();
         }
-        Database.removeSendPinFromChannel(sentFrom.getIdLong());
+        Database.removeSendPinToChannel(sentFrom.getIdLong());
     }
 
     private record UserDetails(String username, String avatarUrl) {

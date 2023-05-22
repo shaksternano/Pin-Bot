@@ -36,6 +36,7 @@ public class PinBotEventListener extends ListenerAdapter {
         CompletableFuture.runAsync(() -> {
             var channelId = event.getChannel().getIdLong();
             Database.removeSendPinFromChannel(channelId);
+            Database.removeSendPinToChannel(channelId);
         });
     }
 }
