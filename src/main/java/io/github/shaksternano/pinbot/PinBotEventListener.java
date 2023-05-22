@@ -7,6 +7,8 @@ import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
+
 public class PinBotEventListener extends ListenerAdapter {
 
     public static final PinBotEventListener INSTANCE = new PinBotEventListener();
@@ -16,22 +18,24 @@ public class PinBotEventListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
-        CommandClient.handleCommand(event);
+        CompletableFuture.runAsync(() -> CommandClient.handleCommand(event));
     }
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        PinnedMessageForwarder.sendCustomPinConfirmationIfPinChannelSet(event);
+        CompletableFuture.runAsync(() -> PinnedMessageForwarder.sendCustomPinConfirmationIfPinChannelSet(event));
     }
 
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
-        PinnedMessageForwarder.forwardMessageIfPinned(event);
+        CompletableFuture.runAsync(() -> PinnedMessageForwarder.forwardMessageIfPinned(event));
     }
 
     @Override
     public void onChannelDelete(@NotNull ChannelDeleteEvent event) {
-        var channelId = event.getChannel().getIdLong();
-        Database.getPinChannel(channelId).ifPresent(pinChannelId -> Database.removeSendPinFromChannel(channelId));
+        CompletableFuture.runAsync(() -> {
+            var channelId = event.getChannel().getIdLong();
+            Database.removeSendPinFromChannel(channelId);
+        });
     }
 }
