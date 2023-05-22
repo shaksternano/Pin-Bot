@@ -24,6 +24,6 @@ It sends pinned messages from a channel to a dedicated pin channel.
 
 ## Usage
 
-1. Run the `/pin-channel set` command to set the channel where pinned messages from the current channel are sent to.
+1. Run the `/pin-channel set` command to set the channel where pinned messages from the current channel are sent to (requires the Manage Channels and Manage Messages permissions).
 2. Make sure the channel where pinned messages are being sent from has a free pin slot, i.e. there are at most 49 pinned messages in it.
 3. To send a message to the pin channel, pin it as you normally would. The bot will automatically unpin it and send it to the pin channel.
