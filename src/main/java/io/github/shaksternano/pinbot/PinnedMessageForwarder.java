@@ -186,7 +186,8 @@ public class PinnedMessageForwarder {
     private static List<String> getMessageContent(Message message) {
         var messageContentBuilder = new StringBuilder(message.getContentRaw());
         for (var attachment : message.getAttachments()) {
-            messageContentBuilder.append("\n").append(attachment.getUrl());
+            var noQueryParamsUrl = attachment.getUrl().split("\\?")[0];
+            messageContentBuilder.append("\n").append(noQueryParamsUrl);
         }
         for (var sticker : message.getStickers()) {
             messageContentBuilder.append("\n").append(sticker.getIconUrl());
