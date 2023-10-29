@@ -1,5 +1,6 @@
 val jdaVersion: String by project
 val mapdbVersion: String by project
+val guavaVersion: String by project
 val gsonVersion: String by project
 val log4j2Version: String by project
 val disruptorVersion: String by project
@@ -23,6 +24,7 @@ dependencies {
         exclude(module = "opus-java")
     }
     implementation("org.mapdb:mapdb:$mapdbVersion")
+    implementation("com.google.guava:guava:$guavaVersion-jre")
     implementation("com.google.code.gson:gson:$gsonVersion")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version")
     implementation("com.lmax:disruptor:$disruptorVersion")

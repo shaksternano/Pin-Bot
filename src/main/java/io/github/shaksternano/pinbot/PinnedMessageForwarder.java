@@ -1,7 +1,6 @@
 package io.github.shaksternano.pinbot;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.common.collect.Lists;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.attribute.IWebhookContainer;
@@ -9,20 +8,16 @@ import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
-import net.dv8tion.jda.api.exceptions.HttpException;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.SplitUtil;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -154,10 +149,11 @@ public class PinnedMessageForwarder {
     private static CompletableFuture<Void> forwardMessageToWebhook(Message message, String webhookUrl) {
         var author = message.getAuthor();
         var guild = message.getGuild();
-        return retrieveUserDetails(author, guild)
-            .thenApply(userDetails -> createWebhookRequests(message, userDetails.username(), userDetails.avatarUrl()))
-            .thenCompose(requestBodies -> sendWebhookMessages(requestBodies, webhookUrl))
-            .thenCompose(unused -> unpinOriginalMessage(message));
+        return retrieveUserDetails(author, guild).thenCompose(userDetails -> {
+            var messageSendFuture = createAndSendWebhookMessage(message, userDetails.username(), userDetails.avatarUrl(), webhookUrl);
+            var unpinFuture = unpinOriginalMessage(message);
+            return CompletableFuture.allOf(messageSendFuture, unpinFuture);
+        });
     }
 
     private static CompletableFuture<UserDetails> retrieveUserDetails(User author, Guild guild) {
@@ -171,103 +167,81 @@ public class PinnedMessageForwarder {
         }
     }
 
-    private static List<String> createWebhookRequests(Message message, String username, String avatarUrl) {
-        var messageContents = getMessageContent(message);
-        List<String> requestBodies = new ArrayList<>();
-        for (int i = 0; i < messageContents.size(); i++) {
-            var messageContent = messageContents.get(i);
-            var lastElement = i == messageContents.size() - 1;
-            var requestBody = createWebhookRequest(messageContent, username, avatarUrl, message.getJumpUrl(), lastElement);
-            requestBodies.add(requestBody);
+    private static CompletableFuture<Void> createAndSendWebhookMessage(Message message, String username, String avatarUrl, String webhookUrl) {
+        var client = WebhookClient.createClient(message.getJDA(), webhookUrl);
+        var messageFutures = createWebhookMessages(message);
+        CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
+        for (var messageFuture : messageFutures) {
+            future = future.thenCompose(unused -> messageFuture)
+                .thenCompose(messageData -> client.sendMessage(messageData)
+                    .setUsername(username)
+                    .setAvatarUrl(avatarUrl)
+                    .submit()
+                )
+                .thenApply(unused -> null);
         }
-        return requestBodies;
+        return future;
     }
 
-    private static List<String> getMessageContent(Message message) {
+    private static List<CompletableFuture<MessageCreateData>> createWebhookMessages(Message message) {
+        var messageData = getMessageData(message);
+        return createPinnedMessages(messageData.messageContent(), messageData.attachments(), message);
+    }
+
+    private static MessageData getMessageData(Message message) {
         var messageContentBuilder = new StringBuilder(message.getContentRaw());
+        List<Message.Attachment> attachments = new ArrayList<>();
         for (var attachment : message.getAttachments()) {
-            var noQueryParamsUrl = attachment.getUrl().split("\\?")[0];
-            messageContentBuilder.append("\n").append(noQueryParamsUrl);
+            var contentType = attachment.getContentType();
+            if (attachment.getSize() <= Message.MAX_FILE_SIZE
+                && contentType != null
+                && contentType.toLowerCase().contains("audio")
+            ) {
+                attachments.add(attachment);
+            } else {
+                var noQueryParamsUrl = attachment.getUrl().split("\\?")[0];
+                messageContentBuilder.append("\n").append(noQueryParamsUrl);
+            }
         }
         for (var sticker : message.getStickers()) {
             messageContentBuilder.append("\n").append(sticker.getIconUrl());
         }
-        return SplitUtil.split(
-            messageContentBuilder.toString(),
+        return new MessageData(messageContentBuilder.toString(), attachments);
+    }
+
+    private static List<CompletableFuture<MessageCreateData>> createPinnedMessages(String content, List<Message.Attachment> attachments, Message originalMessage) {
+        var messageContents = SplitUtil.split(
+            content,
             Message.MAX_CONTENT_LENGTH,
             true,
             SplitUtil.Strategy.NEWLINE,
             SplitUtil.Strategy.WHITESPACE,
             SplitUtil.Strategy.ANYWHERE
         );
-    }
-
-    private static String createWebhookRequest(String messageContent, String username, String avatarUrl, String originalMessageUrl, boolean originalMessageButton) {
-        var requestBody = new JsonObject();
-        requestBody.addProperty("content", messageContent);
-        requestBody.addProperty("username", username);
-        requestBody.addProperty("avatar_url", avatarUrl);
-
-        if (originalMessageButton) {
-            var messageLinkButton = new JsonObject();
-            messageLinkButton.addProperty("type", 2);
-            messageLinkButton.addProperty("style", 5);
-            messageLinkButton.addProperty("label", "Original message");
-            messageLinkButton.addProperty("url", originalMessageUrl);
-
-            var actionRowComponents = new JsonArray();
-            actionRowComponents.add(messageLinkButton);
-
-            var actionRow = new JsonObject();
-            actionRow.addProperty("type", 1);
-            actionRow.add("components", actionRowComponents);
-
-            var components = new JsonArray();
-            components.add(actionRow);
-            requestBody.add("components", components);
-        }
-
-        return requestBody.toString();
-    }
-
-    private static CompletableFuture<Void> sendWebhookMessages(Iterable<String> requestBodies, String webhookUrl) {
-        CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
-        for (var requestBody : requestBodies) {
-            future = future.thenCompose(unused -> sendWebhookMessage(requestBody, webhookUrl))
-                .thenApply(unused -> null);
-        }
-        return future;
-    }
-
-    private static CompletableFuture<HttpResponse<String>> sendWebhookMessage(String requestBody, String webhookUrl) {
-        try {
-            var request = HttpRequest.newBuilder()
-                .uri(new URI(webhookUrl))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-            return HttpClient.newHttpClient()
-                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .whenComplete(PinnedMessageForwarder::handleResponse);
-        } catch (URISyntaxException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-
-    private static void handleResponse(HttpResponse<?> response, Throwable throwable) {
-        if (throwable == null) {
-            // Check if status code is not 2xx
-            if (response.statusCode() / 100 != 2) {
-                throw new HttpException(
-                    "The webhook message request failed with status code "
-                        + response.statusCode()
-                        + ". Response body:\n"
-                        + response.body()
-                );
+        var partitionedAttachments = Lists.partition(attachments, Message.MAX_FILE_AMOUNT);
+        List<CompletableFuture<MessageCreateData>> messageFutures = new ArrayList<>();
+        var maxSize = Math.max(messageContents.size(), partitionedAttachments.size());
+        for (var i = 0; i < maxSize; i++) {
+            var messageBuilder = new MessageCreateBuilder();
+            if (i == maxSize - 1) {
+                messageBuilder.addComponents(ActionRow.of(Button.link(originalMessage.getJumpUrl(), "Original message")));
             }
-        } else {
-            throw new HttpException("Failed to send webhook message.", throwable);
+            CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
+            if (i < messageContents.size()) {
+                var messageContent = messageContents.get(i);
+                messageBuilder.addContent(messageContent);
+            }
+            if (i < partitionedAttachments.size()) {
+                var messageAttachments = partitionedAttachments.get(i);
+                for (var attachment : messageAttachments) {
+                    var inputStreamFuture = attachment.getProxy().download();
+                    future = future.thenCompose(unused -> inputStreamFuture)
+                        .thenAccept(inputStream -> messageBuilder.addFiles(FileUpload.fromData(inputStream, attachment.getFileName())));
+                }
+            }
+            messageFutures.add(future.thenApply(unused -> messageBuilder.build()));
         }
+        return messageFutures;
     }
 
     private static CompletableFuture<Void> unpinOriginalMessage(Message pinned) {
@@ -276,7 +250,7 @@ public class PinnedMessageForwarder {
 
     private static void handleError(@Nullable Throwable throwable, MessageChannel channel) {
         if (throwable != null) {
-            Main.getLogger().error("An error occurred while pinning a message.", throwable);
+            Main.getLogger().error("An error occurred while pinning a message", throwable);
             channel.sendMessage("An error occurred while pinning this message.").queue();
         }
     }
@@ -297,5 +271,8 @@ public class PinnedMessageForwarder {
         public UserDetails(Member member) {
             this(member.getEffectiveName(), member.getEffectiveAvatarUrl());
         }
+    }
+
+    private record MessageData(String messageContent, List<Message.Attachment> attachments) {
     }
 }
