@@ -191,22 +191,41 @@ public class PinnedMessageForwarder {
     private static MessageData getMessageData(Message message) {
         var messageContentBuilder = new StringBuilder(message.getContentRaw());
         List<Message.Attachment> attachments = new ArrayList<>();
+        long maxFileSize;
+        if (message.isFromGuild()) {
+            maxFileSize = message.getGuild().getMaxFileSize();
+        } else {
+            maxFileSize = Message.MAX_FILE_SIZE;
+        }
         for (var attachment : message.getAttachments()) {
-            var contentType = attachment.getContentType();
-            if (attachment.getSize() <= Message.MAX_FILE_SIZE
-                && contentType != null
-                && contentType.toLowerCase().contains("audio")
-            ) {
+            if (attachment.getSize() <= maxFileSize && reUploadAttachment(attachment, message)) {
                 attachments.add(attachment);
             } else {
-                var noQueryParamsUrl = attachment.getUrl().split("\\?")[0];
-                messageContentBuilder.append("\n").append(noQueryParamsUrl);
+                String attachmentUrl;
+                var fileExtension = attachment.getFileExtension();
+                if (fileExtension != null && fileExtension.equalsIgnoreCase("gif")) {
+                    attachmentUrl = attachment.getProxyUrl();
+                } else {
+                    attachmentUrl = attachment.getUrl().split("\\?")[0];
+                }
+                messageContentBuilder.append("\n").append(attachmentUrl);
             }
         }
         for (var sticker : message.getStickers()) {
             messageContentBuilder.append("\n").append(sticker.getIconUrl());
         }
         return new MessageData(messageContentBuilder.toString(), attachments);
+    }
+
+    private static boolean reUploadAttachment(Message.Attachment attachment, Message message) {
+        if (!attachment.isImage()) {
+            return true;
+        }
+        var fileExtension = attachment.getFileExtension();
+        if (fileExtension != null && fileExtension.equalsIgnoreCase("gif")) {
+            return false;
+        }
+        return message.getAttachments().size() > 1 || !message.getContentRaw().isBlank();
     }
 
     private static List<CompletableFuture<MessageCreateData>> createPinnedMessages(String content, List<Message.Attachment> attachments, Message originalMessage) {
