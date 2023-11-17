@@ -198,7 +198,7 @@ public class PinnedMessageForwarder {
             maxFileSize = Message.MAX_FILE_SIZE;
         }
         for (var attachment : message.getAttachments()) {
-            if (attachment.getSize() <= maxFileSize && reUploadAttachment(attachment, message)) {
+            if (attachment.getSize() <= maxFileSize && reUploadAttachment(attachment)) {
                 attachments.add(attachment);
             } else {
                 String attachmentUrl;
@@ -217,15 +217,9 @@ public class PinnedMessageForwarder {
         return new MessageData(messageContentBuilder.toString(), attachments);
     }
 
-    private static boolean reUploadAttachment(Message.Attachment attachment, Message message) {
-        if (!attachment.isImage()) {
-            return true;
-        }
+    private static boolean reUploadAttachment(Message.Attachment attachment) {
         var fileExtension = attachment.getFileExtension();
-        if (fileExtension != null && fileExtension.equalsIgnoreCase("gif")) {
-            return false;
-        }
-        return message.getAttachments().size() > 1 || !message.getContentRaw().isBlank();
+        return fileExtension == null || !fileExtension.equalsIgnoreCase("gif");
     }
 
     private static List<CompletableFuture<MessageCreateData>> createPinnedMessages(String content, List<Message.Attachment> attachments, Message originalMessage) {
