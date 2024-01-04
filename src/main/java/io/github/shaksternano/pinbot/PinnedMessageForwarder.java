@@ -8,8 +8,10 @@ import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.SplitUtil;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -17,12 +19,14 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class PinnedMessageForwarder {
 
@@ -46,7 +50,7 @@ public class PinnedMessageForwarder {
             sentFrom.retrieveMessageById(pinnedMessageReference.getMessageId())
                 .submit()
                 .thenCompose(pinnedMessage -> sendPinConfirmation(sentFrom, pinChannelId, pinner, pinnedMessage))
-                .whenComplete((unused, throwable) -> handleError(throwable, sentFrom));
+                .whenComplete((unused, throwable) -> handleError(throwable, pinConfirmation));
         }
     }
 
@@ -85,7 +89,7 @@ public class PinnedMessageForwarder {
                 .thenCompose(webhooks -> getOrCreateWebhook(webhooks, webhookContainer))
                 .thenApply(webhook -> getWebhookUrl(webhook, pinChannel))
                 .thenCompose(webhook -> forwardMessageToWebhook(message, webhook))
-                .whenComplete((unused, throwable) -> handleError(throwable, sentFrom)),
+                .whenComplete((unused, throwable) -> handleError(throwable, message)),
             () -> handleNoWebhookSupport(sentFrom, pinChannel)
         );
     }
@@ -132,9 +136,9 @@ public class PinnedMessageForwarder {
 
     private static Optional<Icon> getIcon(User user) {
         var avatarUrl = user.getEffectiveAvatarUrl();
-        try (var iconStream = new URL(avatarUrl).openStream()) {
+        try (var iconStream = new URI(avatarUrl).toURL().openStream()) {
             return Optional.of(Icon.from(iconStream));
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             Main.getLogger().error("Failed to create icon for " + user + ".", e);
             return Optional.empty();
         }
@@ -261,11 +265,49 @@ public class PinnedMessageForwarder {
         return pinned.unpin().submit();
     }
 
-    private static void handleError(@Nullable Throwable throwable, MessageChannel channel) {
+    private static void handleError(@Nullable Throwable throwable, Message message) {
         if (throwable != null) {
-            Main.getLogger().error("An error occurred while pinning a message", throwable);
-            channel.sendMessage("An error occurred while pinning this message.").queue();
+            if (isInvalidFormBody(throwable)) {
+                handleBannedUsername(message);
+            } else {
+                handleGenericError(throwable, message);
+            }
         }
+    }
+
+    private static boolean isInvalidFormBody(Throwable throwable) {
+        return getErrorResponse(throwable)
+            .map(errorResponse -> errorResponse == ErrorResponse.INVALID_FORM_BODY)
+            .orElse(false);
+    }
+
+    private static Optional<ErrorResponse> getErrorResponse(Throwable throwable) {
+        if (throwable instanceof CompletionException completionException) {
+            var cause = completionException.getCause();
+            if (cause instanceof ErrorResponseException errorResponseException) {
+                return Optional.of(errorResponseException.getErrorResponse());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static void handleBannedUsername(Message message) {
+        var author = message.getAuthor();
+        var guild = message.getGuild();
+        retrieveUserDetails(author, guild).thenAccept(userDetails -> {
+            var sentFrom = message.getChannel();
+            sentFrom.sendMessage(
+                "Failed to pin message as the username `"
+                    + userDetails.username()
+                    + "` is not allowed!"
+            ).queue();
+        });
+    }
+
+    private static void handleGenericError(Throwable throwable, Message message) {
+        Main.getLogger().error("An error occurred while pinning a message", throwable);
+        var sentFrom = message.getChannel();
+        sentFrom.sendMessage("An error occurred while pinning this message.").queue();
     }
 
     private static void handleNoWebhookSupport(MessageChannel sentFrom, @Nullable Channel pinChannel) {
