@@ -210,9 +210,9 @@ public class PinnedMessageForwarder {
                 if (fileExtension != null && fileExtension.equalsIgnoreCase("gif")) {
                     attachmentUrl = attachment.getProxyUrl();
                 } else {
-                    attachmentUrl = attachment.getUrl().split("\\?")[0];
+                    attachmentUrl = attachment.getUrl();
                 }
-                messageContentBuilder.append("\n").append(attachmentUrl);
+                messageContentBuilder.append("\n").append(attachmentUrl.split("\\?")[0]);
             }
         }
         for (var sticker : message.getStickers()) {
